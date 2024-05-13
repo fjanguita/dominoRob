@@ -38,7 +38,7 @@ def recibirInterfaz():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif(mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -99,6 +99,8 @@ def recibirDummy():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
+            elif (mensaje == '1'):
+                continuar = 1
             else:
                 instruccion = int(mensaje)
             with condicion:
@@ -163,7 +165,7 @@ if __name__ == "__main__":
                 condicion.wait()
                 print("Ficha colocada, notificando a la interfaz...")
                 time.sleep(2.0)
-                envInt.send('-1'.encode())
+                envInt.send('1'.encode())
 
             if(instruccion == 2):
                 print("Moviendo al robot para robar ficha...\n")
@@ -171,7 +173,7 @@ if __name__ == "__main__":
                 condicion.wait()
                 print("Ficha robada. Notificando al agente...\n")
                 time.sleep(1.0)
-                envAg.send('-1'.encode())
+                envAg.send('1'.encode())
 
             if(instruccion == 3):
                 print("Moviendo al robot hasta 'Zona Robo'...")
@@ -180,7 +182,7 @@ if __name__ == "__main__":
                 condicion.wait()
                 print("Robot en 'Zona Robo'.\n")
                 time.sleep(1.0)
-                envAg.send('-1'.encode())
+                envAg.send('1'.encode())
 
             if(instruccion == 4):
                 print("Moviendo al robot hasta 'Zona Fichas'...")
@@ -189,7 +191,7 @@ if __name__ == "__main__":
                 condicion.wait()
                 print("Robot en 'Zona Robo'.\n")
                 time.sleep(1.0)
-                envAg.send('-1'.encode())
+                envAg.send('1'.encode())
 
             if(instruccion == 5):
                 print("Moviendo el robot a 'Zona Tablero'...\n")
@@ -197,7 +199,7 @@ if __name__ == "__main__":
                 condicion.wait()
                 print("Robot en 'Zona Tablero'.\n")
                 time.sleep(1.0)
-                envAg.send('-1'.encode())
+                envAg.send('1'.encode())
     
     envDum.send('0'.encode())
 

@@ -33,7 +33,7 @@ def recibirRobot():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif (mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -71,7 +71,7 @@ def recibirAgente():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif (mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -104,7 +104,7 @@ def recibirVision():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif (mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -128,7 +128,7 @@ puertoVis = 1434
 envVis = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
-msg = '-1'
+msg = '1'
 fin = '0'
 
 thRob = threading.Thread(target=recibirRobot)
@@ -182,7 +182,7 @@ print("Esperando a que finalice la fase de robo...")
 with condicion:
     condicion.wait()
 
-dobles = int(input("Introduce el numero de tu ficha doble más alta: "))
+dobles = input("Introduce el numero de tu ficha doble más alta: ")
 
 print("Obteniendo la ficha doble mas alta del robot...")
 envVis.send('4'.encode())
@@ -201,18 +201,15 @@ while(partida):
     with condicion:
         if(empiezaRobot):
             envVis.send('1'.encode())
-            print("El robot va a ejecutar su turno...\n")
             condicion.wait()
             print("El robot ha finalizado su turno.\n")
             time.sleep(2.0)
     
-    key = input("Tu turno. Juega ficha o roba. \nPulsa Enter para pasar el turno al robot o 'q' para terminar\n")
-    if(key == 'q'):
-        envRob.send(fin.encode())
-        envAg.send(fin.encode())
-        envVis.send(fin.encode())
+    input("Tu turno. Juega ficha o roba. \nPulsa Enter para pasar el turno al robot\n")
 
-
+envRob.send(fin.encode())
+envAg.send(fin.encode())
+envVis.send(fin.encode())
 
 # while(partida):
 #     key = input("Pulsa Enter para enviar un mensaje...\nIntroduce 'q' para terminar\n")

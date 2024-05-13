@@ -37,7 +37,7 @@ def recibirInterfaz():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif( mensaje == '-1' ):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -69,7 +69,7 @@ def recibirVision():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif(mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -101,7 +101,7 @@ def recibirRobot():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif(mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -177,7 +177,7 @@ while(partida):
             condicion.wait()
             print("\nEl robot esta en Zona Robo. Notificando a Vision...\n")
             time.sleep(1.0)
-            envVis.send('-1'.encode())
+            envVis.send('1'.encode())
 
         if(instruccion == 7):
             print("Solicitando al robot que robe 7 fichas...\n")
@@ -189,7 +189,7 @@ while(partida):
             
             print("Fichas robadas. Notificando a la interfaz...")
             time.sleep(1.0)
-            envInt.send('-1'.encode())
+            envInt.send('1'.encode())
         
         if(instruccion == 4):
             print("Solicitando al robot que vaya a 'Zona Fichas'...\n")
@@ -211,7 +211,7 @@ while(partida):
             condicion.wait()
             print("\nEl robot esta en Zona Tablero. Notificando a Vision...\n")
             time.sleep(1.0)
-            envVis.send('5'.encode())
+            envVis.send('4'.encode())
 
         if(instruccion == 1):
             print("Eligiendo ficha para colocar...\n")

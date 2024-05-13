@@ -36,7 +36,7 @@ def recibirInterfaz():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif(mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
@@ -69,7 +69,7 @@ def recibirAgente():
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
                 partida = 0
-            elif(mensaje == '-1'):
+            elif (mensaje == '1'):
                 continuar = 1
             else:
                 instruccion = int(mensaje)
