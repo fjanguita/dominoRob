@@ -1,7 +1,10 @@
 import socket
 import threading
-from comandoRobot import comandoRobot
 import time
+
+from comandoRobot import comandoRobot
+import programaRobot as pr
+
 
 partida = 1
 continuar = 0
@@ -69,9 +72,11 @@ def recibirAgente():
         if (mensaje != b''):
             estructura = comandoRobot.deserialize(mensaje)
             print("Se ha recibido el mensaje:\n   ", estructura.tipoComando,"\n   ", estructura.posePick,"\n   ", estructura.posePlace,"\n")
+
             instruccion = estructura.tipoComando
             posePick = estructura.posePick
             posePlace = estructura.posePlace
+
             with condicion:
                 condicion.notify()
 
@@ -79,22 +84,22 @@ def recibirAgente():
     clienteRcvAg.close()
     rcvAg.close()
 
-def recibirDummy():
+def recibirRobot():
     global partida, condicion, continuar, instruccion
     direccion = 'localhost'
     puerto = 1441
-    rcvDum = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    rcvDum.bind((direccion,puerto))
-    rcvDum.listen(1)
+    rcvRob = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    rcvRob.bind((direccion,puerto))
+    rcvRob.listen(1)
     print("Esperando conexion del robot...\n")
 
     # Bloquea hasta que recibe una conexion
-    clienteRcvDum, direccionRcvDum = rcvDum.accept()
-    print("Conexion establecida desde: ", direccionRcvDum,"\n")
+    clienteRcvRob, direccionRcvRob = rcvRob.accept()
+    print("Conexion establecida desde: ", direccionRcvRob,"\n")
 
     # Bucle para manejar la llegada de mensajes
     while(partida):
-        mensaje = clienteRcvDum.recv(128).decode()
+        mensaje = clienteRcvRob.recv(128).decode()
         if (mensaje != ''):
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
@@ -106,8 +111,8 @@ def recibirDummy():
         
 
     print("Cerrando los sockets")
-    clienteRcvDum.close()
-    rcvDum.close()
+    clienteRcvRob.close()
+    rcvRob.close()
 
 def conectarInterfaz():
     direccion = 'localhost'
@@ -125,15 +130,19 @@ def conectarAgente():
 
     return envAg
 
-def conectarDummy():
-    direccion = 'localhost'
-    puerto = 1440
-    envDum = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    envDum.connect((direccion, puerto))
+def conectarRobot():
+    direccion = "169.254.12.28"  # IP del robot
+    puerto = 30002  
+    envRob = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    envRob.connect((direccion, puerto))
 
-    return envDum
+    return envRob
 
 if __name__ == "__main__":
+
+    poseZonaRobo = [0.20596, 0.55084, 0.56105, 2.565, -2.332, -2.603]
+    poseZonaFichas = [-0.23388, 0.53303, 0.54152, 2.265, -2.484, -2.532]
+    poseZonaTablero = [-0.01050, 0.62040, 0.56304, 2.408, -2.288, -2.676]
 
     envInt = conectarInterfaz()
 
@@ -145,15 +154,17 @@ if __name__ == "__main__":
     thAg.daemon = True
     thAg.start()
 
-    thDum = threading.Thread(target=recibirDummy)
-    thDum.daemon = True
-    thDum.start()
+    # thRob = threading.Thread(target=recibirRobot)
+    # thRob.start()
 
     while(continuar == 0):
         print("Esperando señal de la Interfaz...")
         time.sleep(2.0)
 
-    envDum = conectarDummy()
+    envRob = conectarRobot()
+
+    pr.initRobot(envRob)
+
     envAg = conectarAgente()
 
     while(partida):
@@ -162,48 +173,49 @@ if __name__ == "__main__":
 
             if(instruccion == 1):
                 print("Cogiendo ficha y colocandola en el tablero...\n")
-                envDum.send('1'.encode())
-                condicion.wait()
+                pr.ejecutarComando(envRob, instruccion, posePick, posePlace)
+                # condicion.wait()
                 print("Ficha colocada, notificando a la interfaz...")
                 time.sleep(2.0)
                 envInt.send('-1'.encode())
 
             if(instruccion == 2):
                 print("Moviendo al robot para robar ficha...\n")
-                envDum.send('7'.encode())
-                condicion.wait()
+                pr.ejecutarComando(envRob, instruccion, posePick, posePlace)
+                # condicion.wait()
                 print("Ficha robada. Notificando al agente...\n")
                 time.sleep(1.0)
                 envAg.send('-1'.encode())
 
             if(instruccion == 3):
                 print("Moviendo al robot hasta 'Zona Robo'...")
-                envDum.send('3'.encode())
+                pr.moverRobotJoint(envRob, poseZonaRobo)
 
-                condicion.wait()
+                # condicion.wait()
                 print("Robot en 'Zona Robo'.\n")
                 time.sleep(1.0)
                 envAg.send('-1'.encode())
 
             if(instruccion == 4):
                 print("Moviendo al robot hasta 'Zona Fichas'...")
-                envDum.send('4'.encode())
+                pr.moverRobotJoint(envRob, poseZonaFichas)
 
-                condicion.wait()
+                # condicion.wait()
                 print("Robot en 'Zona Robo'.\n")
                 time.sleep(1.0)
                 envAg.send('-1'.encode())
 
             if(instruccion == 5):
                 print("Moviendo el robot a 'Zona Tablero'...\n")
-                envDum.send('5'.encode())
-                condicion.wait()
+                pr.moverRobotJoint(envRob, poseZonaTablero)
+
+                # condicion.wait()
                 print("Robot en 'Zona Tablero'.\n")
                 time.sleep(1.0)
                 envAg.send('-1'.encode())
     
-    envDum.send('0'.encode())
+    envRob.send('0'.encode())
 
     thInt.join()
     thAg.join()
-    thDum.join()
+    # thRob.join()

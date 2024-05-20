@@ -141,13 +141,10 @@ def conectarVision():
 envInt = conectarInterfaz()
 
 thInt = threading.Thread(target=recibirInterfaz)
-thInt.daemon = True
 thInt.start()
 thVis = threading.Thread(target=recibirVision)
-thVis.daemon = True
 thVis.start()
 thRob = threading.Thread(target=recibirRobot)
-thRob.daemon = True
 thRob.start()
 
 while(continuar == 0):
@@ -158,6 +155,18 @@ envRob = conectarRobot()
 envVis = conectarVision()
 
 array_vacio = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+array_ficha = [-0.15488, 0.30106, 0.1648, 2.241, -2.201, 0.0]
+
+poseRobo1 = [-0.28867, 0.38369, -0.04966, 2.163, -2.278, 0.0]
+poseRobo2 = [-0.28867, 0.35869, -0.04966, 2.163, -2.278, 0.0]
+poseRobo3 = [-0.28867, 0.32369, -0.04966, 2.163, -2.278, 0.0]
+poseRobo4 = [-0.28867, 0.28869, -0.04966, 2.163, -2.278, 0.0]
+poseRobo5 = [-0.28867, 0.25369, -0.04966, 2.163, -2.278, 0.0]
+poseRobo6 = [-0.28867, 0.21869, -0.04966, 2.163, -2.278, 0.0]
+poseRobo7 = [-0.28867, 0.18369, -0.04966, 2.163, -2.278, 0.0]
+
+posesRobo = [poseRobo1, poseRobo2, poseRobo3, poseRobo4, poseRobo5, poseRobo6, poseRobo7]
+
 msg = comandoRobot(1,array_vacio,array_vacio)
 msg_zona1 = comandoRobot(3,array_vacio,array_vacio)
 msg_zona2 = comandoRobot(4,array_vacio,array_vacio)
@@ -184,10 +193,11 @@ while(partida):
 
         if(instruccion == 7):
             print("Solicitando al robot que robe 7 fichas...\n")
-            for i in range(1,8):
+            for i in range(0,7):
+                msg_robar = comandoRobot(2, array_ficha, posesRobo[i])
                 envRob.sendall(msg_robar.serialize())
                 condicion.wait()
-                print("Fichas robadas: ", i, "\n")
+                print("Fichas robadas: ", i+1, "\n")
                 time.sleep(1.0)
             
             print("Fichas robadas. Notificando a la interfaz...")

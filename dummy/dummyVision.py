@@ -99,8 +99,10 @@ def conectarAgente():
 envInt = conectarInterfaz()
 
 thInt = threading.Thread(target=recibirInterfaz)
+thInt.daemon = True
 thInt.start()
 thAg = threading.Thread(target=recibirAgente)
+thAg.daemon = True
 thAg.start()
 
 while(continuar == 0):

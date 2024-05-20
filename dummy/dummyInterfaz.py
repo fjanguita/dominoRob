@@ -132,10 +132,13 @@ msg = '-1'
 fin = '0'
 
 thRob = threading.Thread(target=recibirRobot)
+thRob.daemon = True
 thRob.start()
 thAg = threading.Thread(target=recibirAgente)
+thAg.daemon = True
 thAg.start()
 thVis = threading.Thread(target=recibirVision)
+thVis.daemon = True
 thVis.start()
 
 while(recibidos < 3):
