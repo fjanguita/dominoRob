@@ -179,20 +179,15 @@ time.sleep(1.0)
 
 print("El robot va a robar sus 7 fichas...")
 
-envVis.send('3'.encode())
+envVis.send('7'.encode())
 
 print("Esperando a que finalice la fase de robo...")
 with condicion:
     condicion.wait()
 
-dobles = int(input("Introduce el numero de tu ficha doble más alta: "))
-
-print("Obteniendo la ficha doble mas alta del robot...")
-envVis.send('4'.encode())
-with condicion:
-    condicion.wait()
-
 print("El doble mas alto del robot es: ", instruccion)
+
+dobles = int(input("Introduce el numero de tu ficha doble más alta: "))
 
 if( dobles > instruccion ):
     print("Tienes el doble mas alto, empiezas tu\n")
@@ -209,8 +204,10 @@ while(partida):
             print("El robot ha finalizado su turno.\n")
             time.sleep(2.0)
     
+    empiezaRobot = True
     key = input("Tu turno. Juega ficha o roba. \nPulsa Enter para pasar el turno al robot o 'q' para terminar\n")
     if(key == 'q'):
+        partida = False
         envRob.send(fin.encode())
         envAg.send(fin.encode())
         envVis.send(fin.encode())

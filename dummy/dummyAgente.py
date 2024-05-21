@@ -174,6 +174,43 @@ while(partida):
         print("\nEsperando instrucciones...\n")
         condicion.wait()
 
+        # Instruccion principal de desarrollo del turno
+        if(instruccion == 1):
+            print("Eligiendo ficha para colocar...\n")
+            time.sleep(2.0)
+
+            # LOGICA DEL AGENTE PARA ELEGIR FICHA O ROBAR
+            ficha = True
+            if( ficha ):
+                # MANDA AL ROBOT POSICION DE FICHA Y POSICION DE COLOCAR
+                msg_ficha = comandoRobot(1,array_vacio,array_vacio)
+                envRob.sendall(msg_ficha.serialize())
+            else: 
+                print("No se puede colocar ninguna ficha. El robot va a robar...\n")
+
+                # Mover al robot a la zona de robo
+                envVis.send('3'.encode())
+                condicion.wait()
+                envRob.send(msg_zona1.serialize())
+                condicion.wait()
+
+                # Confirma a vision que robot esta en zona robo
+                envVis.send('-1'.encode())
+                condicion.wait()
+
+                # Recibe fichas en zona robo para elegir una
+                if(instruccion == 8):
+                    # No hay fichas disponibles y el robot pasa turno
+                    envVis.send('-1'.encode())
+                else:
+                    #Elige ficha para robar y se la manda al robot 
+                    envRob.sendall(msg_robar.serialize())
+
+                    # Espera a que el robot robe una ficha
+                    condicion.wait()
+                    # Inicia secuencia para obtener foto de las fichas
+                    envVis('4'.encode())
+
         if(instruccion == 3):
             print("Solicitando al robot que vaya a 'Zona Robo'...\n")
             envRob.send(msg_zona1.serialize())
@@ -192,8 +229,9 @@ while(partida):
             
             print("Fichas robadas. Notificando a la interfaz...")
             time.sleep(1.0)
-            envInt.send('-1'.encode())
+            envVis.send('-1'.encode())
         
+        # Mueve al robot a la zona de fichas para actualizar las fichas disponibles
         if(instruccion == 4):
             print("Solicitando al robot que vaya a 'Zona Fichas'...\n")
             envRob.send(msg_zona2.serialize())
@@ -202,11 +240,19 @@ while(partida):
             time.sleep(1.0)
             envVis.send('4'.encode())
 
+            # ESPERA MENSAJE DE VISION CON LAS FICHAS
+            condicion.wait()
+
+            # ACTUALIZAR FICHAS DISPONIBLES
+
+            envVis.send('-1'.encode())
+
+        # Actualiza fichas disponibles y elige el doble mas alto entre las fichas disponibles
         if(instruccion == 6):
             print("Se va a devolver el doble más alto...\n")
-            doble = 6
+            doble = '6'
             time.sleep(1.0)
-            envVis.send(str(doble).encode())
+            envVis.send(doble.encode())
 
         if(instruccion == 5):
             print("Solicitando al robot que vaya a 'Zona Tablero'...\n")
@@ -214,20 +260,9 @@ while(partida):
             condicion.wait()
             print("\nEl robot esta en Zona Tablero. Notificando a Vision...\n")
             time.sleep(1.0)
-            envVis.send('5'.encode())
+            envVis.send('-1'.encode())
 
-        if(instruccion == 1):
-            print("Eligiendo ficha para colocar...\n")
-            time.sleep(2.0)
 
-            # LOGICA DEL AGENTE PARA ELEGIR FICHA O ROBAR
-            ficha = True
-            if( ficha ):
-                msg_ficha = comandoRobot(1,array_vacio,array_vacio)
-                envRob.sendall(msg_ficha.serialize())
-            else: 
-                print("No se puede colocar ninguna ficha. El robot va a robar...\n")
-                envRob.sendall(msg_robar.serialize())
                 
 
 thInt.join()
