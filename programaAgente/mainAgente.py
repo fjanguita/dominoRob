@@ -3,17 +3,14 @@ from comandoRobot import comandoRobot
 from comandoVision import comandoVision
 import threading
 import time
-import math
 import struct
 import numpy as np
+import math
 
 partida = 1
 continuar = 0
 
 instruccion = 0
-
-num_piezas = 0
-fichas_vis = []
 
 # Creamos un objeto Condition
 condicion = threading.Condition()
@@ -35,7 +32,11 @@ def recibirInterfaz():
     # Bucle para manejar la llegada de mensajes
     while(partida):
         mensaje = clienteRcvInt.recv(8).decode()
-
+        # print("Se ha recibido el mensaje: ", mensaje,"\n")
+        # try:
+        #     partida = int(mensaje)
+        # except:
+        #     print("Mensaje recibido NO VALIDO\n")
         if (mensaje != ''):
             print("Se ha recibido el mensaje: ", mensaje,"\n")
             if(mensaje == '0'):
@@ -310,7 +311,7 @@ class Agente:
                                            ficha_nueva.coorX == ficha.coorX and
                                            ficha_nueva.coorY == ficha.coorY and
                                            math.isclose(ficha_nueva.orientacion, ficha.orientacion, abs_tol=1e-9) 
-                                           for ficha in self.fichas_juego)]
+                                           for ficha in self.fichas_juego)] 
         cantidad_fichas_nuevas = len(fichas_nuevas_reales)
         print("Cantidad fichas nuevas juego:", cantidad_fichas_nuevas)
         if cantidad_fichas_nuevas == 0:#REVISAR
@@ -342,15 +343,18 @@ class Agente:
         self.fichas_nuevas_juego.clear()
 
         juego_terminado=self.comprueba_fin_juego()#MIRAR COMO SE CIERRA EL JUEGO Y BLOQUEA SELECCIONAR FICHA PARA JUGAR
+        # FUNCION ACTUALIZAR ESTADO JUEGO TIENE QUE TERMINAR AQUI
+
+        # ESTE BLOQUE IF-ELSE VA FUERA DE LA FUNCIÓN
         if not juego_terminado:
-            self.seleccionar_ficha_para_jugar()
+            self.comprobar_ficha_para_jugar()
             print("\nFichas en el espacio de juego después de actualizar sin contar con la nueva elegida:")
             self.ver_fichas(es_disponible=False)
             print("....")
         else:
             print("\nFin NO SE ELIGE FICHA")
 
-    def seleccionar_ficha_para_jugar(self):
+    def comprobar_ficha_para_jugar(self):
         self.fichas_seleccionadas_para_jugar.clear()
         self.fichas_ayuda=[]
         self.loc_extremo_iz=False
@@ -371,35 +375,56 @@ class Agente:
                     self.fichas_seleccionadas_para_jugar.append(ficha)
                 print(f"Opción de ficha para jugar lado der: {ficha.valorA}-{ficha.valorB}")
 
+       
         if not self.fichas_seleccionadas_para_jugar:
-            if self.robo_set:
-                next_ficha_robo = self.robo_set.pop(0)  # Tomamos la primera y la quitamos
-                print(f"Tomando ficha de robo: {next_ficha_robo.coorX}, {next_ficha_robo.coorY}, {math.degrees(next_ficha_robo.orientacion)} grados")
-                if self.fichas_disponibles:
-                    last_ficha = self.fichas_disponibles[-1]
-                    next_posX = last_ficha.coorX + 2 # cos(orientacion) * largo[depende de ficha vertical u horizontal]
-                    next_posY = last_ficha.coorY
-                    next_orient = last_ficha.orientacion
-                else: # No se debería llegar nunca pero por si acaso
-                    next_posX, next_posY, next_orient = 0, -3, math.pi / 2
-                print(f"Tomando ficha de robo: Posición donde irá: ({next_posX}, {next_posY}), Orientación: {math.degrees(next_orient)%360} grados")
-            else:
-                print("No hay fichas disponibles para jugar ni para robar.")#Aqui llamaríamos a función que envíe pasar
-
+            return False
+        else: 
+            return True
+    
+    def seleccionar_ficha_para_robar(self):
+        if self.robo_set:
+            next_ficha_robo = self.robo_set.pop(0)  # Tomamos la primera y la quitamos
+            print(f"Tomando ficha de robo: {next_ficha_robo.coorX}, {next_ficha_robo.coorY}, {math.degrees(next_ficha_robo.orientacion)} grados")
+            if self.fichas_disponibles:
+                last_ficha = self.fichas_disponibles[-1]
+                next_posX = last_ficha.coorX + 2
+                next_posY = last_ficha.coorY
+                next_orient = last_ficha.orientacion
+            else: # No se debería llegar nunca pero por si acaso
+                next_posX, next_posY, next_orient = 0, -3, math.pi / 2
+            print(f"Tomando ficha de robo: Posición donde irá: ({next_posX}, {next_posY}), Orientación: {math.degrees(next_orient)%360} grados")
         else:
-            ficha_elegida=self.elegir_ficha_mas_adecuada()
+            print("No hay fichas disponibles para jugar ni para robar.")# Aqui llamaríamos a función que envíe pasar
 
-            if ficha_elegida:
-                print(f"Ficha definitiva seleccionada para jugar: {ficha_elegida.valorA}-{ficha_elegida.valorB}")
-                self.buscar_ficha(ficha_elegida)
-                self.buscar_extremo(ficha_elegida)
-                self.fichas_disponibles.remove(ficha_elegida)
-                if len(self.fichas_disponibles) == 0:
-                    print("¡Has ganado el juego al quedarte sin fichas!")
-                    return
-            
-                print("Fichas disponibles después de jugar:")
-                self.ver_fichas(es_disponible=True)
+    def seleccionar_ficha_para_jugar(self):
+            # ESTO HAY QUE SACARLO DE AQUÍ Y HACERLO UNA FUNCIÓN NUEVA
+        if self.robo_set:
+            next_ficha_robo = self.robo_set.pop(0)  # Tomamos la primera y la quitamos
+            print(f"Tomando ficha de robo: {next_ficha_robo.coorX}, {next_ficha_robo.coorY}, {math.degrees(next_ficha_robo.orientacion)} grados")
+            if self.fichas_disponibles:
+                last_ficha = self.fichas_disponibles[-1]
+                next_posX = last_ficha.coorX + 2
+                next_posY = last_ficha.coorY
+                next_orient = last_ficha.orientacion
+            else: # No se debería llegar nunca pero por si acaso
+                next_posX, next_posY, next_orient = 0, -3, math.pi / 2
+            print(f"Tomando ficha de robo: Posición donde irá: ({next_posX}, {next_posY}), Orientación: {math.degrees(next_orient)%360} grados")
+        else:
+            print("No hay fichas disponibles para jugar ni para robar.")#Aqui llamaríamos a función que envíe pasar
+
+        ficha_elegida=self.elegir_ficha_mas_adecuada()
+
+        if ficha_elegida:
+            print(f"Ficha definitiva seleccionada para jugar: {ficha_elegida.valorA}-{ficha_elegida.valorB}")
+            self.buscar_ficha(ficha_elegida)
+            self.buscar_extremo(ficha_elegida)
+            self.fichas_disponibles.remove(ficha_elegida)
+            if len(self.fichas_disponibles) == 0:
+                print("¡Has ganado el juego al quedarte sin fichas!")
+                return
+        
+            print("Fichas disponibles después de jugar:")
+            self.ver_fichas(es_disponible=True)
 
     def buscar_ficha(self,ficha_elegida):
         try:
@@ -553,7 +578,6 @@ def convertir_a_array(Array_str,Npiezas):
 
     return array
 
-
 # Función para recibir mensajes y enviar una confirmación al agente
 def recibir_y_confirmararray(conn):
     try:
@@ -574,7 +598,6 @@ def recibir_y_confirmararray(conn):
     except Exception as e:
         print('Error inesperado:', e)
 
-
 def recibir_y_confirmar(conn):
     try:
         mensaje = conn.recv(1024).decode()
@@ -587,7 +610,6 @@ def recibir_y_confirmar(conn):
         print('La conexión se ha cerrado desde el lado del cliente.')
     except ConnectionResetError:
         print('La conexión se ha restablecido desde el lado del cliente.')
-
 
 def quien_empieza(conn):
     try:
@@ -691,21 +713,27 @@ while(partida):
     with condicion:
         print("\nEsperando instrucciones...\n")
         condicion.wait()
-
+        fichas_juego_Vis=convertir_a_array(fichas_vis,num_piezas)
+        agente.añadir_fichas_desde_arrays(fichas_juego_Vis, es_disponible=False) 
+        #LOGICA DEL AGENTE PARA ELEGIR FICHA O ROBAR
+        agente.actualizar_estado_juego()
         # Instruccion principal de desarrollo del turno
         if(instruccion == 1):
             print("Eligiendo ficha para colocar...\n")
             time.sleep(2.0)
-
+            #KIKO HACE FOTO Y AGREGAMOS ARRAY A FICHAS JUEGO
+            
+            agente.añadir_fichas_desde_arrays(fichas_juego_Vis, es_disponible=False) 
             # LOGICA DEL AGENTE PARA ELEGIR FICHA O ROBAR
-            ficha = True
+            agente.actualizar_estado_juego()# la parte en la que se elije la de robar se saca paponerla  AQUI
+            ficha = True # LA FUNCION DE ANTES SACA RETURN LA ficha pickplace 
             if( ficha ):
                 # MANDA AL ROBOT POSICION DE FICHA Y POSICION DE COLOCAR
                 msg_ficha = comandoRobot(1,array_vacio,array_vacio)
                 envRob.sendall(msg_ficha.serialize())
             else: 
                 print("No se puede colocar ninguna ficha. El robot va a robar...\n")
-
+                
                 # Mover al robot a la zona de robo
                 envVis.send('3'.encode())
                 condicion.wait()
@@ -721,6 +749,7 @@ while(partida):
                     # No hay fichas disponibles y el robot pasa turno
                     envVis.send('-1'.encode())
                 else:
+                    # AQUI
                     #Elige ficha para robar y se la manda al robot 
                     envRob.sendall(msg_robar.serialize())
 
@@ -736,10 +765,29 @@ while(partida):
             print("\nEl robot esta en Zona Robo. Notificando a Vision...\n")
             time.sleep(1.0)
             envVis.send('-1'.encode())
+            #ESTA ES LA PARTE PARA AGREGAR FICHAS DE ROBO UNA VEZ SE HACE LA IMAGEN
+            fichas_robo=agente.añadir_fichas_robo_desde_array(fichas_vis) #HECHO 
+            time.sleep(0.5)
 
         if(instruccion == 7):
             print("Solicitando al robot que robe 7 fichas...\n")
+            print("Solicitando al robot que vaya a 'Zona CENTRO TABLERO'...\n")
+            envRob.send(msg_zona3.serialize())
+            condicion.wait()
+            print("\nEl robot esta en Zona Tablero. Notificando a Vision...\n")
+            time.sleep(1.0)
+            envVis.send('-1'.encode())
+            time.sleep(0.5)
+            fichas_robo=agente.añadir_fichas_robo_desde_array(fichas_vis) #HECHO 
+
             for i in range(1,8):
+                next_ficha_robo =agente.robo_set.pop(0)
+                next_posX = Posicion_inicial[i][1]#No sé si esto es correcto
+                next_posY = Posicion_inicial[i][2]
+                next_orient = Posicion_inicial[i][3]
+                array_coger=[0,0,next_ficha_robo.coorX, next_ficha_robo.coorY, next_ficha_robo.orientacion]
+                array_dejar=[0,0, next_posX, next_posY, next_orient]
+                msg_robar = comandoRobot(2,array_coger,array_dejar)
                 envRob.sendall(msg_robar.serialize())
                 condicion.wait()
                 print("Fichas robadas: ", i, "\n")
@@ -747,7 +795,7 @@ while(partida):
             
             print("Fichas robadas. Notificando a la interfaz...")
             time.sleep(1.0)
-            envVis.send('-1'.encode())
+            envVis.send('-1'.encode())#hecho creo
         
         # Mueve al robot a la zona de fichas para actualizar las fichas disponibles
         if(instruccion == 4):
@@ -760,17 +808,17 @@ while(partida):
 
             # ESPERA MENSAJE DE VISION CON LAS FICHAS
             condicion.wait()
-
+            agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=True) #HECHO
             # ACTUALIZAR FICHAS DISPONIBLES
-
-            envVis.send('-1'.encode())
+            envVis.send('-1'.encode())# hecho pero con duda 
 
         # Actualiza fichas disponibles y elige el doble mas alto entre las fichas disponibles
         if(instruccion == 6):
+            agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=True) #HECHO
             print("Se va a devolver el doble más alto...\n")
-            doble = '6'
+            doble = agente.encontrar_ficha_de_mayor_valor(agente.fichas_disponibles)
             time.sleep(1.0)
-            envVis.send(doble.encode())
+            envVis.send(doble.encode())#hecho
 
         if(instruccion == 5):
             print("Solicitando al robot que vaya a 'Zona Tablero'...\n")
@@ -778,8 +826,9 @@ while(partida):
             condicion.wait()
             print("\nEl robot esta en Zona Tablero. Notificando a Vision...\n")
             time.sleep(1.0)
-            envVis.send('-1'.encode())
-
+            agente.añadir_fichas_robo_desde_array(fichas_vis)
+            agente.actualizar_estado_juego()
+            envVis.send('-1'.encode()) #hecho
 
 thInt.join()
 thVis.join()
