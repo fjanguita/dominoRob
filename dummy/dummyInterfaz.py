@@ -85,7 +85,7 @@ def recibirAgente():
 def recibirVision():
     global partida, recibidos, continuar, condicion, instruccion
     
-    direccion = 'localhost'
+    direccion = '0.0.0.0'
     puerto = 1406
     rcvRob = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     rcvRob.bind((direccion, puerto))
@@ -123,7 +123,7 @@ direccionAg = 'localhost'
 puertoAg = 1424
 envAg = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-direccionVis = 'localhost'
+direccionVis = '169.254.12.33'
 puertoVis = 1434
 envVis = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 

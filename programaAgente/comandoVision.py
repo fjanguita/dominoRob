@@ -16,15 +16,14 @@ class comandoVision:
         # Empaquetar los datos en formato binario
         return struct.pack(formato, self.comando, self.Npiezas, *flat_array)
 
-    @classmethod
-    def deserialize(cls, data):
-        # Primero desempaquetar los dos primeros enteros
-        int_format = "ii"
-        int_size = struct.calcsize(int_format)
-        comando, Npiezas = struct.unpack(int_format, data[:int_size])
-        # Luego desempaquetar los floats, que son 5 por cada pieza
-        float_format = "f" * (5 * Npiezas)
-        floats = struct.unpack(float_format, data[int_size:])
-        # Convertir el array plano de floats en una lista de listas
-        array = np.array(floats).reshape((Npiezas, 5))
-        return cls(comando, Npiezas, array)
+def deserialize(data):
+    # Primero desempaquetar los dos primeros enteros
+    int_format = "ii"
+    int_size = struct.calcsize(int_format)
+    comando, Npiezas = struct.unpack(int_format, data[:int_size])
+    # Luego desempaquetar los floats, que son 5 por cada pieza
+    float_format = "f" * (5 * Npiezas)
+    floats = struct.unpack(float_format, data[int_size:])
+    # Convertir el array plano de floats en una lista de listas
+    array = np.array(floats).reshape((Npiezas, 5))
+    return comando, Npiezas, array
