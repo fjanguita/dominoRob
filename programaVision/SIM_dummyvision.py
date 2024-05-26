@@ -1,7 +1,6 @@
 import socket
 import threading
 import time
-import cv2
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,21 +12,6 @@ import sys
 import select
 import threading
 import struct
-
-
-class direcionesIP:
-    agente   = ("192.168.20.14",1435)#enviar
-    interfaz = ("192.168.20.14",1406)#enviar
-    #agente   = ("169.254.12.14",1435)#enviar
-    #interfaz = ("169.254.12.14",1406)#enviar
-    visionAgente = ("0.0.0.0",1436)#recibir
-    visioninterfaz = ("0.0.0.0",1434)#recibir
-
-print(" ")
-print(f"Enviar a Ip Agente: {direcionesIP.agente}, ip interfaz: {direcionesIP.interfaz}")
-print(f"Recibir a puerto Agente: {direcionesIP.visionAgente[1]}, puerto interfaz: {direcionesIP.visioninterfaz[1]}")
-print(" ")
-
 
 class comandoVision:
     def __init__(self, comando, Npiezas, array=None):
@@ -60,31 +44,22 @@ class comandoVision:
 
 # Apartado para la visualización de fotos
 indice_actual = 0
-carpeta = r'D:\YOLO-domino\data\TEST'
 
-ret = calibrar = False
 
-real_width  = 1.71 # Largo real mm
-real_height = 1.71 # Ancho real mm a 405mm
+# Dirección y puerto del servidor
+addressIN =  ('0.0.0.0',5004)
+addressOut = ('192.168.43.97', 5003)
+
+
+real_width  = 30.5 # Largo real mm
+real_height = 19.2  # Ancho real mm a 405mm
 
 # Variable global para almacenar los datos recibidos
 data_recv = ""
-frame = ""
 lock = threading.Lock()
 
 #Cargar Red Neuronal
 
-model = torch.hub.load('yolov5', 'custom', path='yolov5/runs/train/exp16/weights/best.pt', source='local')  # local repo
-#model = torch.hub.load('yolov5', 'custom', path='yolov5/yolov5m.pt', source='local') #cargar modelos base
-
-# Config
-model.conf = 0.50  # Umbral de confianza para el filtrado de detecciones después de la supresión no máxima (NMS)
-#model.iou = 0.45  # Umbral de intersección sobre unión (IoU) para el proceso de NMS
-model.agnostic = False  # Supresión no máxima agnóstica respecto a las clases
-model.multi_label = False  # NMS multiple labels per box
-#model.classes = [6,13,19,24,28,31,33]  # (optional list) filter by class, i.e. = [0, 15, 16] for COCO persons, cats and dogs
-model.max_det = 1000  # Máximo número de detecciones por imagen
-model.amp = False  # Activar la Precisión Mixta Automática (AMP) durante la inferencia
 
 def px_mm(x, y,z=405):
     global real_height
@@ -102,11 +77,7 @@ def obtener_imagenes_en_carpeta(carpeta):
     imagenes.sort()
     return imagenes
 
-def mostrar_imagen(imagen_path):
-    imagen = cv2.imread(imagen_path)
-    cv2.imshow('Imagen', imagen)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+
 
 def angulo_fichas(centros_nums, fichas_guardadas):
     Nfichas = np.size(fichas_guardadas, 0)
@@ -126,20 +97,19 @@ def angulo_fichas(centros_nums, fichas_guardadas):
 def punto_medio_fichas(array_Agente, nPiezas, results_sorted, zona, width):
     nP =0
     pos_piezas   = np.zeros(shape=(nPiezas,4))    #Valores de posición de las piezas
-    
+   
     if zona == 0:
         calibx = 522.80
-        caliby = 123.11
+        caliby = 123.1-50
         z = 530.71
     elif zona == 1:
         calibx = 522.80
-        caliby = -66.43
+        caliby = -66.43-50
         z = 530.71
     else:
         calibx = -217.42
-        caliby = 351.51
+        caliby = 351.51-50
         z = 530.71
-    
 
     #cálculo de número de piezas y números
     for i in range(np.size(results_sorted['name'])): #Determinamos número de piezas y números para darle el tamaño requerido a los arrays
@@ -150,16 +120,12 @@ def punto_medio_fichas(array_Agente, nPiezas, results_sorted, zona, width):
             pos_piezas[nP][3]=results_sorted['ymax'][i]     #Colocamos el ymax en la cuarta posición
             nP = nP +1
 
-    for i in range(nPiezas):#CAmbiado##################
-        array_Agente[i][3] = ((pos_piezas[i][0] + pos_piezas[i][1])/2)
-        array_Agente[i][2] = ((pos_piezas[i][2] + pos_piezas[i][3])/2)
-        
-        if zona != 99:
-            array_Agente[i][3] = 320-((pos_piezas[i][0] + pos_piezas[i][1])/2)
-            array_Agente[i][2] = ((pos_piezas[i][2] + pos_piezas[i][3])/2)-240
-            array_Agente[i][3] = calcular_distancia_x(array_Agente[i][3],calibx,zona)
-            array_Agente[i][2] = calcular_distancia_y(array_Agente[i][2],caliby,zona)
-        
+    for i in range(nPiezas):
+        array_Agente[i][3] = 320-((pos_piezas[i][0] + pos_piezas[i][1])/2)
+        array_Agente[i][2] = ((pos_piezas[i][2] + pos_piezas[i][3])/2)-240
+        array_Agente[i][3] = calcular_dimencion_real(z,width,array_Agente[i][3],0,calibx)/1000
+        array_Agente[i][2] = calcular_distancia_y(array_Agente[i][2], caliby,zona)/1000
+
     return array_Agente
 
 def calcular_dimencion_real(z, width, xmax, xmin, calibx):
@@ -168,29 +134,18 @@ def calcular_dimencion_real(z, width, xmax, xmin, calibx):
     dimension_real = calibx - ((float(z) + 30.3213232) * 2 * (xmax - xmin) * math.tan(betaRad)) / (1.62286 * width)
     return dimension_real
 
-def calcular_distancia_x(x_med, calibx, zona):
-    if zona == 0:
-        print('x: ', x_med / real_width, 'Calibración: ', calibx)
-        x = calibx + x_med / real_width
-    elif zona == 1:
-        print('Pixeles: ', x_med, 'Calibración: ', calibx)
-        x = calibx - x_med / real_width
-    else:
-        print('Pixeles: ', x_med, 'Calibración: ', calibx)
-        x = -(calibx + x_med / real_width)
-    return x
-
 def calcular_distancia_y(y_med, caliby,zona):
     if  zona == 0:
-        print ('y: ', y_med/real_width, ' Calibración: ', caliby)
-        y = caliby + y_med / real_width
+        print ('y: ', y_med/16.2, ' Calibración: ', caliby)
+        y = caliby + y_med / 1.62
     elif zona == 1:
         print ('Pixeles: ', y_med, ' Calibración: ', caliby)
-        y = caliby - y_med / real_width
+        y = caliby - y_med / 1.92
     else:
         print ('Pixeles: ', y_med, ' Calibración: ', caliby)
-        y = -(caliby + y_med / real_width)
+        y = -(caliby + y_med / 1.92)
     return y
+
 def calcular_punto_medio(resultados_ordenados, array_Agente):
     puntos_por_id = {}
     nP = 0
@@ -238,7 +193,6 @@ def dibujar_lineas(imagen, puntos_por_id, array_Agente, nPiezas):
         except IndexError:
             continue  # Pasar a la siguiente iteración del bucle si no hay suficientes números
         
-        cv2.line(imagen, punto_inicial, punto_final, (0, 255, 0), 2)
         
         # Calcular el ángulo entre la línea y el eje X
         dx = punto_final[0] - punto_inicial[0]
@@ -264,68 +218,16 @@ def dibujar_lineas(imagen, puntos_por_id, array_Agente, nPiezas):
 
     return imagen, angulos, puntos_por_id, array_Agente
 
-def Lectura_YoloP(frame, instruccion,zona=99):
-
-    global z 
-    height, width, _ = frame.shape
-    results = model(frame)
-    results_sorted = results.pandas().xyxy[0].sort_values('xmax', ascending=0)
-
-    print(f"Resultados de la yolo: {results_sorted}")
-
-
-    nPiezas = 0
-    for i in range(np.size(results_sorted['name'])):
-        if (results_sorted['name'][i] == 'Domino-Pieces'):
-            nPiezas = nPiezas + 1
-    pos_piezas = np.zeros(shape=(nPiezas, 4))
-    nP = 0
-
-    array_Agente = np.zeros(shape=(nPiezas, 5))
-
-    puntos_medios, array_Agente = calcular_punto_medio(results_sorted, array_Agente)
-    
-    array_Agente1 = punto_medio_fichas(array_Agente, nPiezas, results_sorted,zona,width)
-    
-
-
-
-    imagen_con_lineas, angulos, puntos_medios, array_Agente11 = dibujar_lineas(frame, puntos_medios, array_Agente, nPiezas)
-    imagen_con_lineas, angulos, puntos_medios, array_Agente22 = dibujar_lineas(frame, puntos_medios, array_Agente1, nPiezas)
-
-    print (f"Array agente Marcos: {array_Agente11} ")
-    print (f"Array agente Alain:  {array_Agente22} ")
-
-
-def Lectura_Yolo(frame, instruccion,zona):
-
-    global z 
-    height, width, _ = frame.shape
-    results = model(frame)
-    results_sorted = results.pandas().xyxy[0].sort_values('xmax', ascending=0)
-
-    nPiezas = 0
-    for i in range(np.size(results_sorted['name'])):
-        if (results_sorted['name'][i] == 'Domino-Pieces'):
-            nPiezas = nPiezas + 1
-    pos_piezas = np.zeros(shape=(nPiezas, 4))
-    nP = 0
-
-    array_Agente = np.zeros(shape=(nPiezas, 5))
-
-    puntos_medios, array_Agente = calcular_punto_medio(results_sorted, array_Agente)
-    
-    array_Agente1 = punto_medio_fichas(array_Agente, nPiezas, results_sorted,zona,width)
-    
-    print (f"Array agente Marcos: {array_Agente1} ")
-    print (f"Array agente Alain:  {array_Agente} ")
-
-
-    imagen_con_lineas, angulos, puntos_medios, array_Agente = dibujar_lineas(frame, puntos_medios, array_Agente, nPiezas)
-
-    # Creamos estructura de datos para enviar
+def sim_YOLO_FichasRobot(instruccion,zona):
+    fichas = np.array([[4, 1, -0.315, 0.140, 1.5708],
+                       [2, 3, -0.315, 0.170, 1.5708],
+                       [1, 1, -0.315, 0.190, 1.5708],
+                       [3, 4, -0.315, 0.220, 1.5708],
+                       [3, 1, -0.315, 0.250, 1.5708],
+                       [3, 3, -0.315, 0.280, 1.5708]])
+    nPiezas = 6
     comando = instruccion
-    robot = comandoVision(comando, nPiezas, array_Agente)
+    robot = comandoVision(comando, nPiezas, fichas)
     serialized_data = robot.serialize()
     print(f"Serialized Data: {serialized_data}")
 
@@ -334,7 +236,100 @@ def Lectura_Yolo(frame, instruccion,zona):
 
     return serialized_data, nPiezas
 
-#============================================= Manejo de Conexiones ================================================================================
+def sim_YOLO_ROBAR(instruccion,zona):
+    fichas = np.array([0, 0, 0.043036, 0.39247,  0.033321])
+    nPiezas = 1
+    comando = instruccion
+    robot = comandoVision(comando, nPiezas, fichas)
+    serialized_data = robot.serialize()
+    print(f"Serialized Data: {serialized_data}")
+
+    deserialized_robot = comandoVision.deserialize(serialized_data)
+    print(f"Deserialized Data: comando={deserialized_robot.comando}, Npiezas={deserialized_robot.Npiezas}, array={deserialized_robot.array}")
+
+    return serialized_data, nPiezas
+
+def sim_YOLO_TABLERO(instruccion,zona):
+    fichas = np.array([[6, 6, 0.0, 0.49153, 0],
+                       [6, 4, 0.0, 0.53000, 0],
+                       [4, 2, 0.0, 0.57000, 0]])
+    nPiezas = 3
+    comando = instruccion
+    robot = comandoVision(comando, nPiezas, fichas)
+    serialized_data = robot.serialize()
+    print(f"Serialized Data: {serialized_data}")
+
+    deserialized_robot = comandoVision.deserialize(serialized_data)
+    print(f"Deserialized Data: comando={deserialized_robot.comando}, Npiezas={deserialized_robot.Npiezas}, array={deserialized_robot.array}")
+
+    return serialized_data, nPiezas
+
+def sim_YOLO_ROBAR_inicio(instruccion,zona):
+    fichas = np.array([[0, 0, 0.045974, 0.49153, 0.032247],
+                       [0, 0, 0.080869, 0.43813,-0.033321],
+                       [0, 0, 0.079753, 0.48742,-0.033321],
+                       [0, 0, 0.080331, 0.39186, 0],
+                       [0, 0, 0.047698, 0.54272, -0.099669],
+                       [0, 0, 0.079107, 0.54021, -0.034469],
+                       [0, 0, 0.045725, 0.44469, -0.13255],
+                       [0, 0, 0.043036, 0.39247,  0.033321]])
+    nPiezas = 8
+    comando = instruccion
+    robot = comandoVision(comando, nPiezas, fichas)
+    serialized_data = robot.serialize()
+    print(f"Serialized Data: {serialized_data}")
+
+    deserialized_robot = comandoVision.deserialize(serialized_data)
+    print(f"Deserialized Data: comando={deserialized_robot.comando}, Npiezas={deserialized_robot.Npiezas}, array={deserialized_robot.array}")
+
+    return serialized_data, nPiezas
+
+def centro_nums(results_sorted,nPiezas):
+    nP =0
+    nNum = 0
+    for i in range(np.size(results_sorted['name'])): #Determinamos número de piezas y números para darle el tamaño requerido a los arrays
+        if (results_sorted['name'][i] != 'Domino-Pieces'):
+            nNum = nNum +1
+
+    pos_nums   = np.zeros(shape=(nNum,4))    #Valores de posición de los números
+    pos_piezas   = np.zeros(shape=(nPiezas,4))    #Valores de posición de las piezas
+    num_name = np.zeros(shape=(nNum,1))
+    #cálculo de número de piezas y números
+    for i in range(np.size(results_sorted['name'])): #Determinamos número de piezas y números para darle el tamaño requerido a los arrays
+        if (results_sorted['name'][i] != 'Domino-Pieces'):
+            pos_nums[nP][0]=results_sorted['xmin'][i]     #Colocamos el xmin en la primera posición
+            pos_nums[nP][1]=results_sorted['xmax'][i]     #Colocamos el xmax en la segunda posición
+            pos_nums[nP][2]=results_sorted['ymin'][i]     #Colocamos el ymin en la tercera posición
+            pos_nums[nP][3]=results_sorted['ymax'][i]     #Colocamos el ymax en la cuarta posición
+            num_name[nP] = results_sorted['name'][i]
+            nP = nP +1
+        else:
+            pos_piezas[nP][0]=results_sorted['xmin'][i]     #Colocamos el xmin en la primera posición
+            pos_piezas[nP][1]=results_sorted['xmax'][i]     #Colocamos el xmax en la segunda posición
+            pos_piezas[nP][2]=results_sorted['ymin'][i]     #Colocamos el ymin en la tercera posición
+            pos_piezas[nP][3]=results_sorted['ymax'][i]     #Colocamos el ymax en la cuarta posición
+
+    centros = np.zeros(shape=(nP,2))
+    for i in range(nP):
+        centros[i][0] = (pos_nums[i][0] + pos_nums[i][1])/2
+        centros[i][1] = (pos_nums[i][2] + pos_nums[i][3])/2
+    
+    return centros, nP, pos_piezas, num_name
+
+def Numeros_a_piezas(results_sorted,array_Agente, nPiezas):
+    piezas_guardada = np.zeros(shape=(nPiezas,2))   #Para tener el recuento de los números guardados en cada pieza
+    centros,nNums,pos_piezas, num_name = centro_nums(results_sorted,nPiezas)
+    for i in range(nPiezas):                #Se estudia en cada número obtenido en cámara si está dentro de los límites de una pieza
+         
+        n=0                                 #Para contabilizar el número de valores en cada pieza (no ha de superar los 2 valores)
+        for j in range(nNums): 
+            if (centros[j][0]<pos_piezas[i][1]) and (centros[j][0]>pos_piezas[i][0]) and (centros[j][1]<pos_piezas[i][3]) and (centros[j][1]>pos_piezas[i][2]):
+                array_Agente[i][n] = int(num_name[j])
+                piezas_guardada[i][n] = j
+                n=n+1
+    return array_Agente
+
+
 
 partida = 1
 continuar = 0
@@ -346,9 +341,8 @@ condicion = threading.Condition()
 def recibirInterfaz():
     global partida,continuar,instruccion, condicion
 
-    direccion = direcionesIP.visioninterfaz[0]
-    puerto = direcionesIP.visioninterfaz[1]
-
+    direccion = '0.0.0.0'
+    puerto = 1434
     rcvInt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     rcvInt.bind((direccion, puerto))
     rcvInt.listen(1)
@@ -359,7 +353,7 @@ def recibirInterfaz():
     print("Conexion establecida desde: ", direccionRcvInt,"\n")
 
     # Bucle para manejar la llegada de mensajes
-    while ret:
+    while(partida):
         mensaje = clienteRcvInt.recv(8).decode()
         
         if (mensaje != ''):
@@ -376,8 +370,8 @@ def recibirInterfaz():
 def recibirAgente():
     global partida,continuar,instruccion, condicion
 
-    direccion = direcionesIP.visionAgente[0]
-    puerto = direcionesIP.visionAgente[1]
+    direccion = '0.0.0.0'
+    puerto = 1436
     rcvInt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     rcvInt.bind((direccion, puerto))
     rcvInt.listen(1)
@@ -388,7 +382,7 @@ def recibirAgente():
     print("Conexion establecida desde: ", direccionRcvInt,"\n")
 
     # Bucle para manejar la llegada de mensajes
-    while ret:
+    while(partida):
         mensaje = clienteRcvInt.recv(8).decode()
         # print("Se ha recibido el mensaje: ", mensaje,"\n")
         # try:
@@ -411,94 +405,22 @@ def recibirAgente():
     rcvInt.close()
 
 def conectarInterfaz():
-    try:
-        direccion = direcionesIP.interfaz[0]
-        puerto = direcionesIP.interfaz[1]
-        envInt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        envInt.connect((direccion, puerto))
-        return envInt
-    except Exception as e:
-        print(f"Error al enviar datos a interfaz de ip {direccion} por socket: {e}")
-        return "error"
+    direccion = '192.168.20.14'
+    puerto = 1406
+    envInt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    envInt.connect((direccion, puerto))
+
+    return envInt
 
 def conectarAgente():
-    try:
-        direccion = direcionesIP.agente[0]
-        puerto = direcionesIP.agente[1]
-        envAg = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        envAg.connect((direccion, puerto))
+    direccion = '192.168.20.14'
+    puerto = 1435
+    envAg = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    envAg.connect((direccion, puerto))
 
-        return envAg
-    except Exception as e:
-        print(f"Error al enviar datos agente de ip {direccion} por socket: {e}")
-        return "error"
+    return envAg
 
-#===================================================== Camara ======================================================================================
-
-def captura_y_procesa_imagenes():
-    global frame
-    global ret
-    cam=0
-    while True:
-        # Inicializamos la cámara
-        print("Iniciando cámara puede tardar un poco.......")
-        cap = cv2.VideoCapture(cam)
-
-        if not cap.isOpened():
-            print("Error: No se puede abrir la cámara presione una tecla para intentar de nuevo")
-            cam = input("Digite un numero del 0 al 10 si quiere cambiar la camara por defecto en otro caso prione cualquier otra tecla")
-            
-            if 0 >= int(cam) >= 10 :
-                cam = 0
-        else:
-            print("Camara Lista")
-            break
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: No se puede recibir frame (stream end?)")
-            break
-        text= f"Partida: {partida},continuar: {continuar}"
-        text1= f"Instruccion: {instruccion}, condicion {condicion}"
-        cv2.putText(frame , text, (30,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1)
-        cv2.putText(frame , text1, (30,60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1)
-        
-        # Procesamos el frame con el modelo YOLO
-        results = model(frame)
-        cv2.imshow('YOLO', np.squeeze(results.render()))
-
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            ret=False
-            break
-        if key == ord('s'):
-            Lectura_YoloP(frame, instruccion)
-
-    # Liberamos la cámara y cerramos todas las ventanas
-    cap.release()
-    cv2.destroyAllWindows()
-
-print("Iniciando hilo de camaras")
-# Crea y lanza el hilo para la captura y procesamiento de imágenes
-hilo_captura = threading.Thread(target=captura_y_procesa_imagenes)
-hilo_captura.start()
-
-#=================================================== MAIN ==========================================================================================
-
-#Tratar de reconectar
-while True:
-    # Esperando a la camara
-    while True:
-        if ret == True:
-            break
-
-    envInt = conectarInterfaz()
-    if envInt == "error":
-        input("Presione cualquier tecla para reconectar...")
-    else:
-        print("Conexion con interfaz establecida")
-        break
+envInt = conectarInterfaz()
 
 thInt = threading.Thread(target=recibirInterfaz)
 thInt.daemon = True
@@ -507,23 +429,14 @@ thAg = threading.Thread(target=recibirAgente)
 thAg.daemon = True
 thAg.start()
 
-
-print("Esperando señal de la Interfaz...")
-
 while(continuar == 0):
+    print("Esperando señal de la Interfaz...")
     time.sleep(2.0)
-    
-print("InterfazConectada")
 
 envAg = conectarAgente()
 msgAgente = '1'
-#imagenes = obtener_imagenes_en_carpeta(carpeta)
 
-
-while True:
-    if ret == False:
-        break
-
+while(partida):
     with condicion:
         print('Dentro del programa...')
         condicion.wait()
@@ -540,7 +453,7 @@ while True:
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA EL AGENTE
             # SI NO HAY FICHAS DE ROBO, ENVIAR AL AGENTE UN '8'
-            data, nPiezas = Lectura_Yolo(frame,instruccion,zona)
+            data, nPiezas = sim_YOLO_ROBAR(instruccion,zona)
 
             if( nPiezas == 0 ):
                 instr = comandoVision(8,1,np.zeros(shape=(1,5)))
@@ -561,7 +474,7 @@ while True:
             print("Robot en 'Zona Fichas'. Enviando imagen...")
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA EL AGENTE
-            data, nPiezas = Lectura_Yolo(frame,instruccion,zona)
+            data, nPiezas = sim_YOLO_FichasRobot(instruccion,zona)
 
             time.sleep(2.0)
             envAg.send(data)
@@ -583,7 +496,7 @@ while True:
             print("Robot en 'Zona Tablero'. Enviando imagen...")
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA EL AGENTE
-            data, nPiezas = Lectura_Yolo(frame,instruccion,zona)
+            data, nPiezas = sim_YOLO_TABLERO(instruccion,zona)
 
             time.sleep(2.0)
             envAg.send(data)
@@ -603,7 +516,7 @@ while True:
             print("Robot en 'Zona Robo'. Enviando imagen al agente...\n")
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA ENVIAR FICHAS DE ROBO AL AGENTE
-            data, nPiezas = Lectura_Yolo(frame,instruccion,zona)
+            data, nPiezas = sim_YOLO_ROBAR_inicio(instruccion,zona)
             #data, nPiezas = sim_YOLO(instruccion,zona)
 
             time.sleep(2.0)
@@ -620,7 +533,7 @@ while True:
             zona = 2
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA ENVIAR FICHAS DISPONIBLES AL AGENTE
             # CAMBIAR EL '6' POR VUESTRO MENSAJE FORMATEADO CON UN 6 EN EL CAMPO DE INSTRUCCION
-            data, nPiezas = Lectura_Yolo(frame,6,zona)
+            data, nPiezas = sim_YOLO_FichasRobot(6,zona)
             #data, nPiezas = sim_YOLO(instruccion,zona)
             envAg.send(data)
 
@@ -635,4 +548,3 @@ while True:
 
 thInt.join()
 thAg.join()
-hilo_captura.join()

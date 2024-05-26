@@ -9,7 +9,8 @@ import math
 
 partida = 1
 continuar = 0
-
+posePick=[]
+posePlace=[]
 instruccion = 0
 
 # Creamos un objeto Condition
@@ -57,14 +58,14 @@ def recibirVision():
     global partida, continuar, instruccion, condicion, fichas_vis, num_piezas
     direccion = '0.0.0.0'
     puerto = 1435
-    rcvInt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    rcvInt.bind((direccion, puerto))
-    rcvInt.listen(1)
+    rcvVis = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    rcvVis.bind((direccion, puerto))
+    rcvVis.listen(1)
     print("Esperando conexion de Vision...\n")
 
     # Bloquea hasta que recibe una conexion
-    clienteRcvInt, direccionRcvInt = rcvInt.accept()
-    print("Conexion establecida desde: ", direccionRcvInt,"\n")
+    clienteRcvInt, direccionRcvVis = rcvVis.accept()
+    print("Conexion establecida desde: ", direccionRcvVis,"\n")
 
     # Bucle para manejar la llegada de mensajes
     while(partida):
@@ -82,7 +83,7 @@ def recibirVision():
                 
     print("Cerrando los sockets")
     clienteRcvInt.close()
-    rcvInt.close()
+    rcvVis.close()
 
 
 def recibirRobot():
@@ -135,7 +136,7 @@ def conectarRobot():
     return envRob
 
 def conectarVision():
-    direccion = '169.254.12.33'
+    direccion = '192.168.20.33'
     puerto = 1436
     envVis = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     envVis.connect((direccion, puerto))
@@ -169,7 +170,7 @@ msg_zona2 = comandoRobot(4,array_vacio,array_vacio)
 msg_zona3 = comandoRobot(5,array_vacio,array_vacio)
 msg_robar = comandoRobot(2,array_vacio,array_vacio)
 
-
+juego_terminado=False
 #### AGENTE 
 class Ficha:
     def __init__(self, valorA, valorB, coorX=0, coorY=0, orientacion=0.0, spin=False):
@@ -197,15 +198,12 @@ class Ficha_Robo:
     
     @staticmethod
     def procesar_fichas(array_fichas):
-        # Verify that the array length is a multiple of 3 since each ficha has three data points
-        if len(array_fichas) % 3 != 0:
-            raise ValueError("Array length must be a multiple of 3.")
 
         fichas = []
-        for i in range(0, len(array_fichas), 3):
-            coorX = array_fichas[i]
-            coorY = array_fichas[i + 1]
-            orientacion = array_fichas[i + 2]
+        for i in range(0, len(array_fichas)):
+            coorX = array_fichas[i][2]
+            coorY = array_fichas[i][3]
+            orientacion = array_fichas[i][4]
             ficha = Ficha_Robo(coorX, coorY, orientacion)
             fichas.append(ficha)
         
@@ -232,6 +230,11 @@ class Agente:
         self.fichas_seleccionadas_para_jugar = [] #Fichas elegidas
         self.fichas_ayuda=[]
         self.robo_set = []
+
+    
+    global posePick
+    global posePlace
+        
 
     def añadir_fichas_desde_arrays(self, arrays_fichas, es_disponible=True):
         destino = self.fichas_disponibles if es_disponible else self.fichas_nuevas_juego
@@ -270,7 +273,7 @@ class Agente:
         self.robo_set.extend(fichas_robo)
         print(f"Fichas de robo añadidas: {fichas_robo}")
 
-    def encontrar_ficha_de_mayor_valor(fichas_seleccionadas_para_jugar):#CAMBIAR LA FUNCIÓN OTRA DONDE ELIGE FICHAS
+    def encontrar_ficha_de_mayor_valor(self, fichas_seleccionadas_para_jugar):#CAMBIAR LA FUNCIÓN OTRA DONDE ELIGE FICHAS
         # Filtra las fichas que tienen el mismo valor en A y B
         fichas_con_valores_iguales = [ficha for ficha in fichas_seleccionadas_para_jugar if ficha.valorA == ficha.valorB]
         
@@ -281,7 +284,7 @@ class Agente:
         # Encuentra la ficha con el mayor valor repetido
         ficha_de_mayor_valor = max(fichas_con_valores_iguales, key=lambda ficha: ficha.valorA)
         
-        return ficha_de_mayor_valor
+        return ficha_de_mayor_valor.valorA
     
     def comprueba_fin_juego(self):
         # Calcular el total de fichas (disponibles + en juego).
@@ -304,35 +307,35 @@ class Agente:
             return False
 
     def actualizar_estado_juego(self):
-        # Identificar fichas nuevas comparando fichas_nuevas_juego con el estado anterior en fichas_juego
+        global juego_terminado
+    # Identificar fichas nuevas comparando fichas_nuevas_juego con el estado anterior en fichas_juego
         fichas_nuevas_reales = [ficha_nueva for ficha_nueva in self.fichas_nuevas_juego 
-                                if not any(ficha_nueva.valorA == ficha.valorA and 
-                                           ficha_nueva.valorB == ficha.valorB and
-                                           ficha_nueva.coorX == ficha.coorX and
-                                           ficha_nueva.coorY == ficha.coorY and
-                                           math.isclose(ficha_nueva.orientacion, ficha.orientacion, abs_tol=1e-9) 
-                                           for ficha in self.fichas_juego)] 
+                            if not any(ficha_nueva.valorA == ficha.valorA and 
+                                       ficha_nueva.valorB == ficha.valorB 
+                                       for ficha in self.fichas_juego)]
         cantidad_fichas_nuevas = len(fichas_nuevas_reales)
         print("Cantidad fichas nuevas juego:", cantidad_fichas_nuevas)
-        if cantidad_fichas_nuevas == 0:#REVISAR
+    
+        if cantidad_fichas_nuevas == 0:
             print("No hay fichas nuevas reales para actualizar el juego.")
-            
+            return
+    
         # Actualizar los extremos según la cantidad y posición de las fichas nuevas
         if not self.fichas_juego:  # Si es el inicio del juego
-             self.extremos = [self.fichas_nuevas_juego[0], self.fichas_nuevas_juego[0]]
+            self.extremos = [self.fichas_nuevas_juego[0], self.fichas_nuevas_juego[0]]
         elif cantidad_fichas_nuevas >= 1:
             # Determinar la posición de las fichas nuevas para ajustar los extremos
-            mitad_array = len(self.fichas_nuevas_juego) // 2
-            indices_nuevas = [self.fichas_nuevas_juego.index(ficha) for ficha in fichas_nuevas_reales]
             if cantidad_fichas_nuevas == 1:
-                if indices_nuevas[0] < mitad_array:
-                    self.extremos[0] = fichas_nuevas_reales[0]  # Nueva ficha como extremo izquierdo
-                else:
-                    self.extremos[1] = fichas_nuevas_reales[0]  # Nueva ficha como extremo derecho
+                nueva_ficha = fichas_nuevas_reales[0]
+                if (nueva_ficha.coorX < self.extremos[0].coorX or nueva_ficha.coorX < self.extremos[1].coorX):
+                    self.extremos[0] = nueva_ficha  # Nueva ficha como extremo izquierdo    
+                elif (nueva_ficha.coorX > self.extremos[0].coorX or nueva_ficha.coorX > self.extremos[1].coorX):
+                    self.extremos[1] = nueva_ficha  # Nueva ficha como extremo derecho
             else:  # cantidad_fichas_nuevas == 2
-                # Ordenar las fichas nuevas por su índice para decidir los extremos
-                fichas_ordenadas_por_posicion = sorted(fichas_nuevas_reales, key=lambda x: indices_nuevas[fichas_nuevas_reales.index(x)])
-                self.extremos = [fichas_ordenadas_por_posicion[0], fichas_ordenadas_por_posicion[1]]
+                # Ordenar las fichas nuevas por su coordenada X
+                fichas_ordenadas_por_x = sorted(fichas_nuevas_reales, key=lambda ficha: ficha.coorX)
+                self.extremos = [fichas_ordenadas_por_x[0], fichas_ordenadas_por_x[-1]]
+
         if self.extremos:
             print("\nFichas en los extremos del juego después de actualizar:")
             print("Extremo izquierdo:", self.extremos[0].ver())
@@ -346,6 +349,17 @@ class Agente:
         # FUNCION ACTUALIZAR ESTADO JUEGO TIENE QUE TERMINAR AQUI
 
         # ESTE BLOQUE IF-ELSE VA FUERA DE LA FUNCIÓN
+        
+        # if not juego_terminado:
+        #     self.comprobar_ficha_para_jugar()
+        #     print("\nFichas en el espacio de juego después de actualizar sin contar con la nueva elegida:")
+        #     self.ver_fichas(es_disponible=False)
+        #     print("....")
+        # else:
+        #     print("\nFin NO SE ELIGE FICHA")
+        
+    
+    def fin_juego(self):
         if not juego_terminado:
             self.comprobar_ficha_para_jugar()
             print("\nFichas en el espacio de juego después de actualizar sin contar con la nueva elegida:")
@@ -353,7 +367,7 @@ class Agente:
             print("....")
         else:
             print("\nFin NO SE ELIGE FICHA")
-
+        
     def comprobar_ficha_para_jugar(self):
         self.fichas_seleccionadas_para_jugar.clear()
         self.fichas_ayuda=[]
@@ -382,9 +396,12 @@ class Agente:
             return True
     
     def seleccionar_ficha_para_robar(self):
+        global instruccion, posePick, posePlace
         if self.robo_set:
             next_ficha_robo = self.robo_set.pop(0)  # Tomamos la primera y la quitamos
             print(f"Tomando ficha de robo: {next_ficha_robo.coorX}, {next_ficha_robo.coorY}, {math.degrees(next_ficha_robo.orientacion)} grados")
+            posePick=next_ficha_robo
+            posePick=[posePick[2],posePick[3],0.0,0.0,0.0,posePick[4]]
             if self.fichas_disponibles:
                 last_ficha = self.fichas_disponibles[-1]
                 next_posX = last_ficha.coorX + 2
@@ -393,31 +410,40 @@ class Agente:
             else: # No se debería llegar nunca pero por si acaso
                 next_posX, next_posY, next_orient = 0, -3, math.pi / 2
             print(f"Tomando ficha de robo: Posición donde irá: ({next_posX}, {next_posY}), Orientación: {math.degrees(next_orient)%360} grados")
+            posePlace=next_ficha_robo
+            posePlace=[posePlace[2],posePlace[3],0.0,0.0,0.0,posePlace[4]]
+
         else:
             print("No hay fichas disponibles para jugar ni para robar.")# Aqui llamaríamos a función que envíe pasar
+            instruccion=8
 
     def seleccionar_ficha_para_jugar(self):
-            # ESTO HAY QUE SACARLO DE AQUÍ Y HACERLO UNA FUNCIÓN NUEVA
-        if self.robo_set:
-            next_ficha_robo = self.robo_set.pop(0)  # Tomamos la primera y la quitamos
-            print(f"Tomando ficha de robo: {next_ficha_robo.coorX}, {next_ficha_robo.coorY}, {math.degrees(next_ficha_robo.orientacion)} grados")
-            if self.fichas_disponibles:
-                last_ficha = self.fichas_disponibles[-1]
-                next_posX = last_ficha.coorX + 2
-                next_posY = last_ficha.coorY
-                next_orient = last_ficha.orientacion
-            else: # No se debería llegar nunca pero por si acaso
-                next_posX, next_posY, next_orient = 0, -3, math.pi / 2
-            print(f"Tomando ficha de robo: Posición donde irá: ({next_posX}, {next_posY}), Orientación: {math.degrees(next_orient)%360} grados")
-        else:
-            print("No hay fichas disponibles para jugar ni para robar.")#Aqui llamaríamos a función que envíe pasar
+        global posePick
+        global posePlace
+
+        #     # ESTO HAY QUE SACARLO DE AQUÍ Y HACERLO UNA FUNCIÓN NUEVA
+        # if self.robo_set:
+        #     next_ficha_robo = self.robo_set.pop(0)  # Tomamos la primera y la quitamos
+        #     print(f"Tomando ficha de robo: {next_ficha_robo.coorX}, {next_ficha_robo.coorY}, {math.degrees(next_ficha_robo.orientacion)} grados")
+        #     if self.fichas_disponibles:
+        #         last_ficha = self.fichas_disponibles[-1]
+        #         next_posX = last_ficha.coorX + 2
+        #         next_posY = last_ficha.coorY
+        #         next_orient = last_ficha.orientacion
+        #     else: # No se debería llegar nunca pero por si acaso
+        #         next_posX, next_posY, next_orient = 0, -3, math.pi / 2
+        #     print(f"Tomando ficha de robo: Posición donde irá: ({next_posX}, {next_posY}), Orientación: {math.degrees(next_orient)%360} grados")
+        # else:
+        #     print("No hay fichas disponibles para jugar ni para robar.")#Aqui llamaríamos a función que envíe pasar
 
         ficha_elegida=self.elegir_ficha_mas_adecuada()
 
         if ficha_elegida:
             print(f"Ficha definitiva seleccionada para jugar: {ficha_elegida.valorA}-{ficha_elegida.valorB}")
-            self.buscar_ficha(ficha_elegida)
-            self.buscar_extremo(ficha_elegida)
+            posePick=self.buscar_ficha(ficha_elegida)
+            posePlace=self.buscar_extremo(ficha_elegida)
+            posePick=[posePick.coorX,posePick.coorY,0.0,0.0,0.0,posePick.orientacion]
+            posePlace=[posePlace.coorX,posePlace.coorY,0.0,0.0,0.0,posePlace.orientacion]
             self.fichas_disponibles.remove(ficha_elegida)
             if len(self.fichas_disponibles) == 0:
                 print("¡Has ganado el juego al quedarte sin fichas!")
@@ -433,8 +459,14 @@ class Agente:
             print("NO SE ENCONTRÓ EL ÍNDICE")
         ficha_sel=self.fichas_disponibles[indice_ficha] 
         print(f"Antigua POSICION: {ficha_sel.valorA}-{ficha_sel.valorB} en posición ({ficha_sel.coorX}, {ficha_sel.coorY}) con orientación {math.degrees(ficha_sel.orientacion) % 360} ")
+        return ficha_sel
 
-    def buscar_extremo(self,ficha_elegida):  
+    def buscar_extremo(self,ficha_elegida):
+
+        limlatiz=-0.23
+        limlatder=0.013
+        limlatinf=0.205+0.065
+        limlatsup=-0.205+0.36+0.65  
     # Buscar el índice de la ficha elegida en fichas_disponibles
         try:
             indice_ficha = self.fichas_disponibles.index(ficha_elegida)
@@ -449,94 +481,151 @@ class Agente:
                 if ficha[1]=="izquierdo":
                     print("Considerada como izquierdo")
                     if ficha_def.valorA==self.extremos[0].valorA and ficha_def.valorA!=ficha_def.valorB:#si tenemos a y b pos vertical y no es ficha doble va arriba y la giramos
-                        if (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA!=self.extremos[0].valorB:
+                        if (abs(self.extremos[0].orientacion-math.pi/2)<0.35 or abs(self.extremos[0].orientacion-3*math.pi/2)<0.35) and self.extremos[0].valorA!=self.extremos[0].valorB:
                             ficha_def.orientacion=self.extremos[0].orientacion+math.pi
                             ficha_def.coorX=self.extremos[0].coorX
-                            ficha_def.coorY=self.extremos[0].coorY+2
+                            ficha_def.coorY=self.extremos[0].coorY+3.7/100
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA==self.extremos[0].valorB:
-                            ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
-                            ficha_def.coorX=self.extremos[0].coorX-2
-                            ficha_def.coorY=self.extremos[0].coorY 
+                        elif (abs(self.extremos[0].orientacion-math.pi/2)<0.35 or abs(self.extremos[0].orientacion-3*math.pi/2)<0.35) and self.extremos[0].valorA==self.extremos[0].valorB:
+                            if ficha_def.coorX-3.7/100<limlatiz:
+
+                                ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX-3.7/100#lim iz
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion*math.pi
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY+3.7/100#lim iz 
                         #si está en horizontal giramos pi      
-                        elif (self.extremos[0].orientacion==0 or self.extremos[0].orientacion==math.pi):
-                            ficha_def.orientacion=self.extremos[0].orientacion+math.pi
-                            ficha_def.coorX=self.extremos[0].coorX-2
-                            ficha_def.coorY=self.extremos[0].coorY
-                    
+                        elif abs(self.extremos[0].orientacion-0)<0.35 or self.extremos[0].orientacion==math.pi:
+                            if ficha_def.coorX-3.7/100<limlatiz:
+
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi
+                                ficha_def.coorX=self.extremos[0].coorX-3.7/100#lim iz
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY+3.7/100#lim iz 
+                                                
 
                     if ficha_def.valorB==self.extremos[0].valorA and ficha_def.valorA!=ficha_def.valorB:
                         #si la ficha está vertical y no es doble subimos solo en Y
-                        if (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA!=self.extremos[0].valorB:
+                        if (abs(self.extremos[0].orientacion-math.pi/2)<0.35 or abs(self.extremos[0].orientacion-3*math.pi/2)<0.35) and self.extremos[0].valorA!=self.extremos[0].valorB:
                             ficha_def.orientacion=self.extremos[0].orientacion
                             ficha_def.coorX=self.extremos[0].coorX
-                            ficha_def.coorY=self.extremos[0].coorY+2#PENSAR como hacer si la pone hacia abajo!!!!!!!!!
+                            ficha_def.coorY=self.extremos[0].coorY+3.7/100#PENSAR como hacer si la pone hacia abajo!!!!!!!!!
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA==self.extremos[0].valorB:
-                            ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
-                            ficha_def.coorX=self.extremos[0].coorX-2
-                            ficha_def.coorY=self.extremos[0].coorY 
+                        elif (abs(self.extremos[0].orientacion-math.pi/2)<0.35 or abs(self.extremos[0].orientacion-3*math.pi/2)<0.35) and self.extremos[0].valorA==self.extremos[0].valorB:
+                            if ficha_def.coorX-3.7/100<limlatiz:
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX-3.7/100#lim iz
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY+3.7/100#lim iz  
                         #si está en horizontal mantenemos pi      
-                        elif (self.extremos[0].orientacion==0 or self.extremos[0].orientacion==math.pi):
-                            ficha_def.orientacion=self.extremos[0].orientacion
-                            ficha_def.coorX=self.extremos[0].coorX-2
-                            ficha_def.coorY=self.extremos[0].coorY
-                            
+                        elif (abs(self.extremos[0].orientacion-0)<0.35 or self.extremos[0].orientacion==math.pi):
+                            if ficha_def.coorX-3.7/100<limlatiz:
+
+                                ficha_def.orientacion=self.extremos[0].orientacion
+                                ficha_def.coorX=self.extremos[0].coorX-3.7/100#lim iz
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY+3.7/100#lim iz                            
  
                     if ficha_def.valorA==ficha_def.valorB:#Si es ficha doble giramos pi/2
                         ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
-                        if self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2:#si la ficha anterior es vertical subimos
+                        if (abs(self.extremos[0].orientacion-math.pi/2)<0.35 or abs(self.extremos[0].orientacion-3*math.pi/2)<0.35):#si la ficha anterior es vertical subimos   
                             ficha_def.coorX=self.extremos[0].coorX
-                            ficha_def.coorY=self.extremos[0].coorY+2
+                            ficha_def.coorY=self.extremos[0].coorY+3.7/100
                         else:#si no nos movemos a la izquierda
-                            ficha_def.coorX=self.extremos[0].coorX-1.5
-                            ficha_def.coorY=self.extremos[0].coorY
-                    
+                            if ficha_def.coorX-3.7/100<limlatiz:
+                                ficha_def.coorX=self.extremos[0].coorX-(3.7/2+1.8/2)/100
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY+(3.7/2+1.8/2)/100#lim iz
+                                               
                 if ficha[1]=="derecho":
                     print("Considerada como derecho")
                     if ficha_def.valorB==self.extremos[1].valorB and ficha_def.valorA!=ficha_def.valorB:
-                        if (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA!=self.extremos[1].valorB:
+                        if (abs(self.extremos[1].orientacion-math.pi/2)<0.35 or abs(self.extremos[1].orientacion-3*math.pi/2)<0.35) and self.extremos[1].valorA!=self.extremos[1].valorB:
                             ficha_def.orientacion=self.extremos[1].orientacion+math.pi
                             ficha_def.coorX=self.extremos[1].coorX
-                            ficha_def.coorY=self.extremos[1].coorY-2
+                            ficha_def.coorY=self.extremos[1].coorY-3.7/100
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA==self.extremos[1].valorB:
-                            ficha_def.orientacion=self.extremos[1].orientacion+3*math.pi/2
-                            ficha_def.coorX=self.extremos[1].coorX+2
-                            ficha_def.coorY=self.extremos[1].coorY 
-                        #si está en horizontal giramos pi      
-                        elif (self.extremos[1].orientacion==0 or self.extremos[1].orientacion==math.pi):
-                            ficha_def.orientacion=self.extremos[1].orientacion+math.pi
-                            ficha_def.coorX=self.extremos[1].coorX+2
-                            ficha_def.coorY=self.extremos[1].coorY
+                        elif (abs(self.extremos[1].orientacion-math.pi/2)<0.35 or abs(self.extremos[1].orientacion-3*math.pi/2)<0.35) and self.extremos[1].valorA==self.extremos[1].valorB:
+                            if ficha_def.coorX+3.7/100>limlatder:
 
+                                ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX+3.7/100#lim iz
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY-3.7/100#lim iz                            
+  
+                        #si está en horizontal giramos pi      
+                        elif (abs(self.extremos[1].orientacion-0)<0.35 or abs(self.extremos[1].orientacion-math.pi)<0.35):
+                            
+                            if ficha_def.coorX+3.7/100>limlatder:
+
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi
+                                ficha_def.coorX=self.extremos[0].coorX+3.7/100#lim iz
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY-3.7/100#lim iz                      
+ 
                     if ficha_def.valorA==self.extremos[1].valorB and ficha_def.valorA!=ficha_def.valorB:
                         #si la ficha está vertical y no es doble subimos solo en Y
-                        if (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA!=self.extremos[1].valorB:
+                        if (abs(self.extremos[1].orientacion-math.pi/2)<0.35 or abs(self.extremos[1].orientacion-3*math.pi/2)<0.35) and self.extremos[1].valorA!=self.extremos[1].valorB:
                             ficha_def.orientacion=self.extremos[1].orientacion
                             ficha_def.coorX=self.extremos[1].coorX
-                            ficha_def.coorY=self.extremos[1].coorY-2#PENSAR como hacer si la pone hacia abajo!!!!!!!!!
+                            ficha_def.coorY=self.extremos[1].coorY-3.7/100#PENSAR como hacer si la pone hacia abajo!!!!!!!!!
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA==self.extremos[1].valorB:
-                            ficha_def.orientacion=self.extremos[1].orientacion+3*math.pi/2
-                            ficha_def.coorX=self.extremos[1].coorX+2
-                            ficha_def.coorY=self.extremos[1].coorY 
+                        elif (abs(self.extremos[1].orientacion-math.pi/2)<0.35 or abs(self.extremos[1].orientacion-3*math.pi/2)<0.35) and self.extremos[1].valorA==self.extremos[1].valorB:
+                            if ficha_def.coorX+3.7/100>limlatder:
+
+                                ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX+3.7/100#lim der
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY-3.7/100#lim der                           
                         #si está en horizontal mantenemos pi      
-                        elif (self.extremos[1].orientacion==0 or self.extremos[1].orientacion==math.pi):
-                            ficha_def.orientacion=self.extremos[1].orientacion
-                            ficha_def.coorX=self.extremos[1].coorX+2
-                            ficha_def.coorY=self.extremos[1].coorY
+                        elif (abs(self.extremos[1].orientacion-0)<0.35 or abs(self.extremos[1].orientacion-math.pi)<0.35):
+                            if ficha_def.coorX+3.7/100>limlatder:
 
-                    if ficha_def.valorA==ficha_def.valorB:#si tenemos ficha doble giramos pi/2
-                        ficha_def.orientacion=self.extremos[1].orientacion+math.pi/2
-                        if self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2:#si la ficha está vertical bajamos
+                                ficha_def.orientacion=self.extremos[0].orientacion
+                                ficha_def.coorX=self.extremos[0].coorX+3.7/100#lim der
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY+3.7/100#lim der                            
+
+                    if ficha_def.valorA==ficha_def.valorB:#si tenemos ficha doble giramos pi/2 CUIDADO
+                        ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
+                        if (abs(self.extremos[1].orientacion-math.pi/2)<0.35 or abs(self.extremos[1].orientacion-3*math.pi/2)<0.35):#si la ficha está vertical bajamos
                             ficha_def.coorX=self.extremos[1].coorX
-                            ficha_def.coorY=self.extremos[1].coorY-2
+                            ficha_def.coorY=self.extremos[1].coorY-3.7/100
                         else:#si no nos movemos a la derecha
-                            ficha_def.coorX=self.extremos[1].coorX+1.5
-                            ficha_def.coorY=self.extremos[1].coorY
-                print(f"NUEVA POSICION: {ficha_def.valorA}-{ficha_def.valorB} en posición ({ficha_def.coorX}, {ficha_def.coorY}) con orientación {math.degrees(ficha_def.orientacion) % 360} ")
+                            if ficha_def.coorX+3.7/100>limlatder:
+                                ficha_def.coorX=self.extremos[0].coorX+(3.7/2+1.8/2)/100#lim der
+                                ficha_def.coorY=self.extremos[0].coorY
+                            else:
+                                ficha_def.coorX=self.extremos[0].coorX
+                                ficha_def.coorY=self.extremos[0].coorY-(3.7/2+1.8/2)/100
 
+                print(f"NUEVA POSICION: {ficha_def.valorA}-{ficha_def.valorB} en posición ({ficha_def.coorX}, {ficha_def.coorY}) con orientación {math.degrees(ficha_def.orientacion) % 360} ")
+                return ficha_def
 
     def elegir_ficha_mas_adecuada(self):
         # Verifica si hay fichas seleccionadas para jugar
@@ -544,7 +633,7 @@ class Agente:
             print("No hay fichas seleccionadas para jugar.")
             return None
         
-        ficha_mas_adecuada=self.encontrar_ficha_de_mayor_valor()
+        ficha_mas_adecuada=self.encontrar_ficha_de_mayor_valor(self.fichas_seleccionadas_para_jugar)
         #Selecciona ficha doble
         if ficha_mas_adecuada:
             return ficha_mas_adecuada
@@ -695,15 +784,15 @@ def quitarcorchetes(lista):
 
 global agente
 agente = Agente()
+secuenciaRobo = True
 
-
-Pos1=[ 0, 0, 0]
-Pos2=[ 2, 0, 0]
-Pos3=[ 4, 0, 0]
-Pos4=[ 6, 0, 0]
-Pos5=[ 8, 0, 0]
-Pos6=[ 10, 0, 0]
-Pos7=[ 12, 0, 0]
+Pos1=[ -0.315, 0.140, 0.020, 3.14, 0.0, 0.0]
+Pos2=[ -0.315, 0.170, 0.020, 3.14, 0.0, 0.0]
+Pos3=[ -0.315, 0.190, 0.020, 3.14, 0.0, 0.0]
+Pos4=[ -0.315, 0.220, 0.020, 3.14, 0.0, 0.0]
+Pos5=[ -0.315, 0.250, 0.020, 3.14, 0.0, 0.0]
+Pos6=[ -0.315, 0.280, 0.020, 3.14, 0.0, 0.0]
+Pos7=[ -0.315, 0.310, 0.020, 3.14, 0.0, 0.0]
 # YA ESTA DEFINIDO EN ROBOT 
 Posicion_inicial=[Pos1, Pos2, Pos3, Pos4, Pos5, Pos6, Pos7]
 ####
@@ -713,26 +802,23 @@ while(partida):
     with condicion:
         print("\nEsperando instrucciones...\n")
         condicion.wait()
-        fichas_juego_Vis=convertir_a_array(fichas_vis,num_piezas)
-        agente.añadir_fichas_desde_arrays(fichas_juego_Vis, es_disponible=False) 
-        #LOGICA DEL AGENTE PARA ELEGIR FICHA O ROBAR
-        agente.actualizar_estado_juego()
         # Instruccion principal de desarrollo del turno
         if(instruccion == 1):
             print("Eligiendo ficha para colocar...\n")
             time.sleep(2.0)
             #KIKO HACE FOTO Y AGREGAMOS ARRAY A FICHAS JUEGO
-            
-            agente.añadir_fichas_desde_arrays(fichas_juego_Vis, es_disponible=False) 
+            agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=False) 
             # LOGICA DEL AGENTE PARA ELEGIR FICHA O ROBAR
             agente.actualizar_estado_juego()# la parte en la que se elije la de robar se saca paponerla  AQUI
-            ficha = True # LA FUNCION DE ANTES SACA RETURN LA ficha pickplace 
+            ficha=agente.comprobar_ficha_para_jugar()
             if( ficha ):
+                agente.seleccionar_ficha_para_jugar()
                 # MANDA AL ROBOT POSICION DE FICHA Y POSICION DE COLOCAR
-                msg_ficha = comandoRobot(1,array_vacio,array_vacio)
+                msg_ficha = comandoRobot(1,posePick,posePlace)
                 envRob.sendall(msg_ficha.serialize())
             else: 
                 print("No se puede colocar ninguna ficha. El robot va a robar...\n")
+
                 
                 # Mover al robot a la zona de robo
                 envVis.send('3'.encode())
@@ -744,14 +830,15 @@ while(partida):
                 envVis.send('-1'.encode())
                 condicion.wait()
 
+                agente.seleccionar_ficha_para_robar()
+                
                 # Recibe fichas en zona robo para elegir una
                 if(instruccion == 8):
                     # No hay fichas disponibles y el robot pasa turno
                     envVis.send('-1'.encode())
                 else:
-                    # AQUI
-                    #Elige ficha para robar y se la manda al robot 
-                    envRob.sendall(msg_robar.serialize())
+                    msg_ficha = comandoRobot(2,posePick,posePlace)
+                    envRob.sendall(msg_ficha.serialize())
 
                     # Espera a que el robot robe una ficha
                     condicion.wait()
@@ -766,34 +853,31 @@ while(partida):
             time.sleep(1.0)
             envVis.send('-1'.encode())
             #ESTA ES LA PARTE PARA AGREGAR FICHAS DE ROBO UNA VEZ SE HACE LA IMAGEN
-            fichas_robo=agente.añadir_fichas_robo_desde_array(fichas_vis) #HECHO 
             time.sleep(0.5)
 
         if(instruccion == 7):
             print("Solicitando al robot que robe 7 fichas...\n")
-            print("Solicitando al robot que vaya a 'Zona CENTRO TABLERO'...\n")
-            envRob.send(msg_zona3.serialize())
-            condicion.wait()
-            print("\nEl robot esta en Zona Tablero. Notificando a Vision...\n")
-            time.sleep(1.0)
-            envVis.send('-1'.encode())
             time.sleep(0.5)
-            fichas_robo=agente.añadir_fichas_robo_desde_array(fichas_vis) #HECHO 
+            fichas_robo=agente.añadir_fichas_robo_desde_array(fichas_vis) #HECHO
 
-            for i in range(1,8):
+            if(agente.robo_set == []):
+                envVis.send('3'.encode())
+                continue
+
+            for i in range(0,2):
                 next_ficha_robo =agente.robo_set.pop(0)
-                next_posX = Posicion_inicial[i][1]#No sé si esto es correcto
-                next_posY = Posicion_inicial[i][2]
-                next_orient = Posicion_inicial[i][3]
-                array_coger=[0,0,next_ficha_robo.coorX, next_ficha_robo.coorY, next_ficha_robo.orientacion]
-                array_dejar=[0,0, next_posX, next_posY, next_orient]
+                next_posX = Posicion_inicial[i][0]#No sé si esto es correcto
+                next_posY = Posicion_inicial[i][1]
+                next_orient = Posicion_inicial[i][2]
+                array_coger=[next_ficha_robo.coorX-3.7/400*math.cos(next_ficha_robo.orientacion), next_ficha_robo.coorY-3.7/400*math.sin(next_ficha_robo.orientacion), 0.0, 0.0, 0.0, next_ficha_robo.orientacion]
+                array_dejar=[next_posX, next_posY, 0.0, 0.0, 0.0, next_orient]
                 msg_robar = comandoRobot(2,array_coger,array_dejar)
                 envRob.sendall(msg_robar.serialize())
                 condicion.wait()
-                print("Fichas robadas: ", i, "\n")
+                print("Fichas robadas: ", i+1, "\n")
                 time.sleep(1.0)
             
-            print("Fichas robadas. Notificando a la interfaz...")
+            print("Fichas robadas. Notificando a la visión...")
             time.sleep(1.0)
             envVis.send('-1'.encode())#hecho creo
         
@@ -804,19 +888,22 @@ while(partida):
             condicion.wait()
             print("\nEl robot esta en Zona Fichas. Notificando a Vision...\n")
             time.sleep(1.0)
-            envVis.send('4'.encode())
+            envVis.send('-1'.encode())
 
             # ESPERA MENSAJE DE VISION CON LAS FICHAS
-            condicion.wait()
-            agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=True) #HECHO
-            # ACTUALIZAR FICHAS DISPONIBLES
-            envVis.send('-1'.encode())# hecho pero con duda 
+            if(not secuenciaRobo ):
+                condicion.wait()
+                agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=True) #HECHO
+                # ACTUALIZAR FICHAS DISPONIBLES
+                envVis.send('-1'.encode())# hecho pero con duda
+                secuenciaRobo = False
 
         # Actualiza fichas disponibles y elige el doble mas alto entre las fichas disponibles
         if(instruccion == 6):
             agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=True) #HECHO
             print("Se va a devolver el doble más alto...\n")
             doble = agente.encontrar_ficha_de_mayor_valor(agente.fichas_disponibles)
+            doble = str(int(doble))
             time.sleep(1.0)
             envVis.send(doble.encode())#hecho
 
@@ -826,7 +913,7 @@ while(partida):
             condicion.wait()
             print("\nEl robot esta en Zona Tablero. Notificando a Vision...\n")
             time.sleep(1.0)
-            agente.añadir_fichas_robo_desde_array(fichas_vis)
+            agente.añadir_fichas_desde_arrays(fichas_vis, es_disponible=False)
             agente.actualizar_estado_juego()
             envVis.send('-1'.encode()) #hecho
 
