@@ -148,6 +148,7 @@ if __name__ == "__main__":
     poseFichas_Alt = [-0.21752, 0.35151, 0.53071, 2.116, 2.481, 2.432]
     poseRobo_Alt = [0.12311, 0.52280, 0.53072, 2.095, 2.541, 2.421]
 
+
     envInt = conectarInterfaz()
 
     thInt = threading.Thread(target=recibirInterfaz)

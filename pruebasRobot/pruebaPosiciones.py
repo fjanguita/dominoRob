@@ -74,4 +74,5 @@ while(partida):
          
 thVis.join()
 
+
 socketRob.close()
