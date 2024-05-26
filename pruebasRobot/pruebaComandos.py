@@ -1,19 +1,39 @@
 import socket
 import time
+import programaRobot as pr
 
-HOST = "169.254.12.28"  # IP del robot
+HOST = "169.254.20.35"  # IP del robot
 PORT = 30002            # Puerto de escucha del robot
 
 socketRob = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 socketRob.connect((HOST, PORT))
 print("Se ha establecido la conexión con el robot.\n")
-#time.sleep(2.0)
 
-# socketRob.send(("movej([4.079, -1.291, 0.562, -1.443, -1.471, 5.692], a=1.0, v=0.1, t=4.0)" + "\n").encode())
-socketRob.send(("movej([1.57, -1.57, 0.0, -1.57, 0.0, 1.1345], a=1.0, v=0.1, t=4.0)" + "\n").encode())
-time.sleep(5.0)
+pose1 = [-0.00193, 0.37800, 0.12272, 2.926, -1.144, 0.0]
+pose2 = [0.13415, 0.26674, 0.12272, 2.926, -1.144, 0.0]
+pose3 = [-0.08589, 0.26674, 0.12272, 2.926, -1.144, 0.0]
 
-# socketRob.send(("movej(p[0.032, 0.434, 0.303, 2.484, 2.368, 0.077], a=1.0, v=0.1, t=4.0)" + "\n").encode())
-# time.sleep(5.0)
+poseHome = [-0.20743, 0.26641, 0.13850, 3.110, 0.0, -0.038]
+
+
+pr.moverRobotJoint(socketRob, poseHome)
+
+print("Moviendo el robot para dibujar un triangulo...\n")
+time.sleep(2.0)
+
+pr.moverRobotJoint(socketRob, pose1)
+print("Robot en Vertice 1\n")
+
+pr.moverRobotLineal(socketRob, pose2)
+print("Robot en Vertice 2\n")
+
+pr.moverRobotLineal(socketRob, pose3)
+print("Robot en Vertice 3\n")
+
+pr.moverRobotLineal(socketRob, pose1)
+print("Volviendo a Home...\n")
+
+pr.moverRobotJoint(socketRob, poseHome)
 
 socketRob.close()
+print("PROCESO FINALIZADO\n")

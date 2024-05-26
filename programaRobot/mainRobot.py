@@ -131,7 +131,7 @@ def conectarAgente():
     return envAg
 
 def conectarRobot():
-    direccion = "169.254.12.28"  # IP del robot
+    direccion = "192.168.20.35"  # IP del robot
     puerto = 30002  
     envRob = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     envRob.connect((direccion, puerto))
@@ -142,7 +142,12 @@ if __name__ == "__main__":
 
     poseZonaRobo = [0.16566, 0.57123, 0.51001, 2.466, -2.271, -2.510]
     poseZonaFichas = [-0.35850, 0.45191, 0.51014, 2.392, -2.316, -2.464]
-    poseZonaTablero = [-0.07651, 0.59647, 0.520, 2.445, -2.339, -2.417]
+    poseZonaTablero = [-0.07651, 0.59647, 0.510, 2.445, -2.339, -2.417]
+
+    poseTablero_Alt = [-0.06643, 0.52280, 0.53072, 2.116, 2.481, 2.432]
+    poseFichas_Alt = [-0.21752, 0.35151, 0.53071, 2.116, 2.481, 2.432]
+    poseRobo_Alt = [0.12311, 0.52280, 0.53072, 2.095, 2.541, 2.421]
+
 
     envInt = conectarInterfaz()
 
@@ -189,7 +194,8 @@ if __name__ == "__main__":
 
             if(instruccion == 3):
                 print("Moviendo al robot hasta 'Zona Robo'...")
-                pr.moverRobotJoint(envRob, poseZonaRobo)
+                #pr.moverRobotJoint(envRob, poseZonaRobo)
+                pr.moverRobotJoint(envRob, poseRobo_Alt)
 
                 # condicion.wait()
                 print("Robot en 'Zona Robo'.\n")
@@ -198,7 +204,8 @@ if __name__ == "__main__":
 
             if(instruccion == 4):
                 print("Moviendo al robot hasta 'Zona Fichas'...")
-                pr.moverRobotJoint(envRob, poseZonaFichas)
+                #pr.moverRobotJoint(envRob, poseZonaFichas)
+                pr.moverRobotJoint(envRob, poseFichas_Alt)
 
                 # condicion.wait()
                 print("Robot en 'Zona Robo'.\n")
@@ -207,7 +214,8 @@ if __name__ == "__main__":
 
             if(instruccion == 5):
                 print("Moviendo el robot a 'Zona Tablero'...\n")
-                pr.moverRobotJoint(envRob, poseZonaTablero)
+                #pr.moverRobotJoint(envRob, poseZonaTablero)
+                pr.moverRobotJoint(envRob, poseTablero_Alt)
 
                 # condicion.wait()
                 print("Robot en 'Zona Tablero'.\n")

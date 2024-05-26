@@ -1,5 +1,6 @@
 import socket
 from comandoRobot import comandoRobot
+from comandoVision import deserialize, comandoVision
 import threading
 import time
 
@@ -49,8 +50,7 @@ def recibirInterfaz():
     rcvInt.close()
 
 def recibirVision():
-    global partida, continuar, instruccion, condicion
-
+    global partida, continuar, instruccion, condicion, fichas_vis, num_piezas
     direccion = 'localhost'
     puerto = 1435
     rcvInt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -64,17 +64,21 @@ def recibirVision():
 
     # Bucle para manejar la llegada de mensajes
     while(partida):
-        mensaje = clienteRcvInt.recv(8).decode()
+        mensaje = clienteRcvInt.recv(1024)
         if (mensaje != ''):
-            print("Se ha recibido el mensaje: ", mensaje,"\n")
-            if(mensaje == '0'):
-                partida = 0
-            elif(mensaje == '-1'):
-                continuar = 1
-            else:
-                instruccion = int(mensaje)
+            comando, Npiezas, array = deserialize(mensaje)
+            print("Se ha recibido el mensaje:\n   ", array,"\n   ", comando,"\n   ", Npiezas,"\n")
+
+            fichas_vis = array
+            instruccion = comando
+            num_piezas = Npiezas
+
             with condicion:
                 condicion.notify()
+                
+    print("Cerrando los sockets")
+    clienteRcvInt.close()
+    rcvInt.close()
 
     print("Cerrando los sockets")
     clienteRcvInt.close()
@@ -221,10 +225,10 @@ while(partida):
 
         if(instruccion == 7):
             print("Solicitando al robot que robe 7 fichas...\n")
-            for i in range(1,8):
+            for i in range(0,3):
                 envRob.sendall(msg_robar.serialize())
                 condicion.wait()
-                print("Fichas robadas: ", i, "\n")
+                print("Fichas robadas: ", i+1, "\n")
                 time.sleep(1.0)
             
             print("Fichas robadas. Notificando a la interfaz...")

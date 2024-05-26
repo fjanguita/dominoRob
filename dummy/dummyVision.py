@@ -1,5 +1,6 @@
 import socket
 from comandoRobot import comandoRobot
+from comandoVision import comandoVision
 import threading
 import time
 
@@ -125,14 +126,20 @@ while(partida):
             time.sleep(2.0)
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA EL AGENTE
+            ficha_robo1 = [0.0, 0.0, 0.08, 0.420, 0.0]
+            ficha_robo2 = [0.0, 0.0, 0.08, 0.400, 0.0]
+            ficha_robo3 = [0.0, 0.0, 0.08, 0.380, 0.0]
             # SI NO HAY FICHAS DE ROBO, ENVIAR AL AGENTE UN '8'
+
+            array_fichas = [ficha_robo1, ficha_robo2, ficha_robo3]
+            msg = comandoVision(3,3,array_fichas)
 
             if( False ):
                 envAg.send('8'.encode())
                 condicion.wait()
                 envInt.send('-1'.encode())
             else:
-                envAg.send('3'.encode())
+                envAg.send(msg.serialize())
 
         if(instruccion == 4):
             print("Solicitando al agente que mueva al robot hasta 'Zona Fichas'...")
@@ -142,9 +149,17 @@ while(partida):
             print("Robot en 'Zona Fichas'. Enviando imagen...")
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA EL AGENTE
+            ficha_disp1 = [2.0, 3.0, -0.320, 0.420, 1.57]
+            ficha_disp2 = [1.0, 5.0, -0.320, 0.400, 1.57]
+            ficha_disp3 = [4.0, 4.0, -0.320, 0.380, 1.57]
+            
+
+            array_fichas = [ficha_disp1, ficha_disp2, ficha_disp3]
+            msg = comandoVision(4,3,array_fichas)
+            
 
             time.sleep(2.0)
-            envAg.send('4'.encode())
+            envAg.send(msg.serialize())
 
             # ESPERA A QUE EL AGENTE ACTUALICE SUS FICHAS
             condicion.wait()
@@ -160,9 +175,16 @@ while(partida):
             print("Robot en 'Zona Fichas'. Enviando imagen...")
 
             # PROCESAR IMAGENES Y FORMATEAR EL MENSAJE PARA EL AGENTE
+            ficha_tablero1 = [1.0, 1.0, -0.120, 0.440, 0.0]
+            ficha_tablero2 = [1.0, 2.0, -0.120, 0.400, 0.0]
+            ficha_tablero3 = [2.0, 4.0, -0.120, 0.360, 0.0]
+            
+
+            array_fichas = [ficha_disp1, ficha_disp2, ficha_disp3]
+            msg = comandoVision(1,3,array_fichas)
 
             time.sleep(2.0)
-            envAg.send('1'.encode())
+            envAg.send(msg.serialize())
 
         # Instruccion 7 comienza la secuencia inicial de robo
         if(instruccion == 7):
