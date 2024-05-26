@@ -223,12 +223,12 @@ def ejecutarComando(socketRob, instruccion, posePick, posePlace):
         #fichaGirar(socketRob)
 
         # ESTO ES DEL ROBOT DE LOS OTROS
-        posePick[3] = 2.461
-        posePick[4] = -2.010
-        posePick[5] = -0.167
-        posePlace[3] = 2.008
-        posePlace[4] = 2.353
-        posePlace[5] = -0.052
+        # posePick[3] = 2.461
+        # posePick[4] = -2.010
+        # posePick[5] = -0.167
+        # posePlace[3] = 2.008
+        # posePlace[4] = 2.353
+        # posePlace[5] = -0.052
         girarFichaAlt(socketRob)
 
     fichaPlace(socketRob, posePlace)
