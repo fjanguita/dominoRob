@@ -123,7 +123,7 @@ direccionAg = 'localhost'
 puertoAg = 1424
 envAg = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-direccionVis = '169.254.12.33'
+direccionVis = '192.168.20.33'
 puertoVis = 1434
 envVis = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 

@@ -136,7 +136,7 @@ def conectarRobot():
     return envRob
 
 def conectarVision():
-    direccion = '169.254.12.33'
+    direccion = '192.168.20.33'
     puerto = 1436
     envVis = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     envVis.connect((direccion, puerto))
@@ -476,17 +476,17 @@ class Agente:
                 if ficha[1]=="izquierdo":
                     print("Considerada como izquierdo")
                     if ficha_def.valorA==self.extremos[0].valorA and ficha_def.valorA!=ficha_def.valorB:#si tenemos a y b pos vertical y no es ficha doble va arriba y la giramos
-                        if (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA!=self.extremos[0].valorB:
+                        if (abs(self.extremos[0].orientacion - math.pi/2) < 0.35 or abs(self.extremos[0].orientacion - 3*math.pi/2) < 0.35) and self.extremos[0].valorA!=self.extremos[0].valorB:
                             ficha_def.orientacion=self.extremos[0].orientacion+math.pi
                             ficha_def.coorX=self.extremos[0].coorX
                             ficha_def.coorY=self.extremos[0].coorY+3.7/100
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA==self.extremos[0].valorB:
+                        elif (abs(self.extremos[0].orientacion - math.pi/2) < 0.35 or abs(self.extremos[0].orientacion - 3*math.pi/2) < 0.35) and self.extremos[0].valorA==self.extremos[0].valorB:
                             ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
                             ficha_def.coorX=self.extremos[0].coorX-3.7/100
                             ficha_def.coorY=self.extremos[0].coorY 
                         #si está en horizontal giramos pi      
-                        elif (self.extremos[0].orientacion==0 or self.extremos[0].orientacion==math.pi):
+                        elif abs(self.extremos[0].orientacion - 0) < 0.35 or abs(self.extremos[0].orientacion - math.pi )< 0.35:
                             ficha_def.orientacion=self.extremos[0].orientacion+math.pi
                             ficha_def.coorX=self.extremos[0].coorX-3.7/100
                             ficha_def.coorY=self.extremos[0].coorY
@@ -494,17 +494,17 @@ class Agente:
 
                     if ficha_def.valorB==self.extremos[0].valorA and ficha_def.valorA!=ficha_def.valorB:
                         #si la ficha está vertical y no es doble subimos solo en Y
-                        if (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA!=self.extremos[0].valorB:
+                        if (abs(self.extremos[0].orientacion - math.pi/2) < 0.35 or abs(self.extremos[0].orientacion - 3*math.pi/2) < 0.35) and self.extremos[0].valorA!=self.extremos[0].valorB:
                             ficha_def.orientacion=self.extremos[0].orientacion
                             ficha_def.coorX=self.extremos[0].coorX
                             ficha_def.coorY=self.extremos[0].coorY+3.7/100#PENSAR como hacer si la pone hacia abajo!!!!!!!!!
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2) and self.extremos[0].valorA==self.extremos[0].valorB:
+                        elif (abs(self.extremos[0].orientacion - math.pi/2) < 0.35 or abs(self.extremos[0].orientacion - 3*math.pi/2) < 0.35) and self.extremos[0].valorA==self.extremos[0].valorB:
                             ficha_def.orientacion=self.extremos[0].orientacion+3*math.pi/2
                             ficha_def.coorX=self.extremos[0].coorX-3.7/100
                             ficha_def.coorY=self.extremos[0].coorY 
                         #si está en horizontal mantenemos pi      
-                        elif (self.extremos[0].orientacion==0 or self.extremos[0].orientacion==math.pi):
+                        elif abs(self.extremos[0].orientacion - 0) < 0.35 or abs(self.extremos[0].orientacion - math.pi) < 0.35:
                             ficha_def.orientacion=self.extremos[0].orientacion
                             ficha_def.coorX=self.extremos[0].coorX-3.7/100
                             ficha_def.coorY=self.extremos[0].coorY
@@ -512,7 +512,7 @@ class Agente:
  
                     if ficha_def.valorA==ficha_def.valorB:#Si es ficha doble giramos pi/2
                         ficha_def.orientacion=self.extremos[0].orientacion+math.pi/2
-                        if self.extremos[0].orientacion==math.pi/2 or self.extremos[0].orientacion==3*math.pi/2:#si la ficha anterior es vertical subimos
+                        if abs(self.extremos[0].orientacion - math.pi/2) < 0.35 or abs(self.extremos[0].orientacion - 3*math.pi/2) < 0.35:#si la ficha anterior es vertical subimos
                             ficha_def.coorX=self.extremos[0].coorX
                             ficha_def.coorY=self.extremos[0].coorY+3.7/100
                         else:#si no nos movemos a la izquierda
@@ -522,41 +522,41 @@ class Agente:
                 if ficha[1]=="derecho":
                     print("Considerada como derecho")
                     if ficha_def.valorB==self.extremos[1].valorB and ficha_def.valorA!=ficha_def.valorB:
-                        if (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA!=self.extremos[1].valorB:
+                        if abs(self.extremos[1].orientacion - math.pi/2) < 0.35 or abs(self.extremos[1].orientacion - 3*math.pi/2) < 0.35 and self.extremos[1].valorA!=self.extremos[1].valorB:
                             ficha_def.orientacion=self.extremos[1].orientacion+math.pi
                             ficha_def.coorX=self.extremos[1].coorX
                             ficha_def.coorY=self.extremos[1].coorY-3.7/100
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA==self.extremos[1].valorB:
+                        elif abs(self.extremos[1].orientacion - math.pi/2) < 0.35 or abs(self.extremos[1].orientacion - 3*math.pi/2) < 0.35 and self.extremos[1].valorA==self.extremos[1].valorB:
                             ficha_def.orientacion=self.extremos[1].orientacion+3*math.pi/2
                             ficha_def.coorX=self.extremos[1].coorX+3.7/100
                             ficha_def.coorY=self.extremos[1].coorY 
                         #si está en horizontal giramos pi      
-                        elif (self.extremos[1].orientacion==0 or self.extremos[1].orientacion==math.pi):
+                        elif abs(self.extremos[1].orientacion - 0) < 0.35 or abs(self.extremos[1].orientacion - math.pi) < 0.35:
                             ficha_def.orientacion=self.extremos[1].orientacion+math.pi
                             ficha_def.coorX=self.extremos[1].coorX+3.7/100
                             ficha_def.coorY=self.extremos[1].coorY
 
                     if ficha_def.valorA==self.extremos[1].valorB and ficha_def.valorA!=ficha_def.valorB:
                         #si la ficha está vertical y no es doble subimos solo en Y
-                        if (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA!=self.extremos[1].valorB:
+                        if (abs(self.extremos[1].orientacion - math.pi/2) < 0.35 or abs(self.extremos[1].orientacion - 3*math.pi/2) < 0.35) and self.extremos[1].valorA!=self.extremos[1].valorB:
                             ficha_def.orientacion=self.extremos[1].orientacion
                             ficha_def.coorX=self.extremos[1].coorX
                             ficha_def.coorY=self.extremos[1].coorY-3.7/100#PENSAR como hacer si la pone hacia abajo!!!!!!!!!
                         #si es ficha doble va la izquierda y se gira para juntar a con el valor giramos a la izquierda 3pi/2
-                        elif (self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2) and self.extremos[1].valorA==self.extremos[1].valorB:
+                        elif (abs(self.extremos[1].orientacion - math.pi/2) < 0.35 or abs(self.extremos[1].orientacion - 3*math.pi/2) < 0.35) and self.extremos[1].valorA==self.extremos[1].valorB:
                             ficha_def.orientacion=self.extremos[1].orientacion+3*math.pi/2
                             ficha_def.coorX=self.extremos[1].coorX+3.7/100
                             ficha_def.coorY=self.extremos[1].coorY 
                         #si está en horizontal mantenemos pi      
-                        elif (self.extremos[1].orientacion==0 or self.extremos[1].orientacion==math.pi):
+                        elif abs(self.extremos[1].orientacion - 0) < 0.35 or abs(self.extremos[1].orientacion - math.pi) < 0.35:
                             ficha_def.orientacion=self.extremos[1].orientacion
                             ficha_def.coorX=self.extremos[1].coorX+3.7/100
                             ficha_def.coorY=self.extremos[1].coorY
 
                     if ficha_def.valorA==ficha_def.valorB:#si tenemos ficha doble giramos pi/2
                         ficha_def.orientacion=self.extremos[1].orientacion+math.pi/2
-                        if self.extremos[1].orientacion==math.pi/2 or self.extremos[1].orientacion==3*math.pi/2:#si la ficha está vertical bajamos
+                        if abs(self.extremos[1].orientacion - math.pi/2) < 0.35 or abs(self.extremos[1].orientacion - 3*math.pi/2) < 0.35: #si la ficha está vertical bajamos
                             ficha_def.coorX=self.extremos[1].coorX
                             ficha_def.coorY=self.extremos[1].coorY-3.7/100
                         else:#si no nos movemos a la derecha
